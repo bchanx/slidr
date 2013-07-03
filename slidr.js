@@ -19,6 +19,11 @@ function Slidr() {
   var _slidr = {};
 
   /**
+   * A {mapping} of slides and their transition effects.
+   */
+  var _transitions = {};
+
+  /**
    * The slide to start at.
    */
   var _start = null;
@@ -47,8 +52,8 @@ function Slidr() {
       'reset': {
         'left': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)") },
         'right': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)") },
-        'up': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
-        'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
+        'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
+        'down': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
       },
       'in': {
         'left': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)") },
@@ -59,8 +64,8 @@ function Slidr() {
       'out': {
         'left': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)") },
         'right': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)") },
-        'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
-        'down': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
+        'up': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
+        'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
       } 
     }
   };
@@ -71,7 +76,10 @@ function Slidr() {
   function _cssInit(element, transition) {
     var css = _lookup(_css, [transition, 'init']);
     if (element && $(element).length && css) {
+      var display = $(element).css('display');
+      display = (display === 'none') ? 'block' : display;
       _extend(css, {
+        'display': display,
         'opacity': '0',
         'position': 'absolute',
         'left': '50%',
@@ -91,7 +99,8 @@ function Slidr() {
     var css = _lookup(_css, [transition, 'reset', dir]);
     if (element && $(element).length && css) {
       css = (dir === 'up' || dir === 'down') ? css($(element).height()) : css($(element).width());
-      $(element).css(css).hide(); // Hide forces the browser to redraw.
+      // Hide forces the browser to redraw.
+      $(element).css(css).hide();
       return true;
     }
     return false;
@@ -105,7 +114,8 @@ function Slidr() {
     if (element && $(element).length && css) {
       css = (dir === 'up' || dir === 'down') ? css($(element).height()) : css($(element).width());
       var opacity = (type === 'in') ? '1' : '0';
-      $(element).css(css).css('opacity', opacity).show(); // Show the slide again after hiding.
+      // Show the slide again after hiding.
+      $(element).css(css).css('opacity', opacity).show();
       return true;
     }
     return false;
@@ -158,21 +168,34 @@ function Slidr() {
   /**
    * Get the next transition for `element` entering/leaving the viewport from `dir` direction.
    */
-  // TODO: Not fully implemented yet!
-  function _getTransition(transition) {
-    // Set cube by default.
-    return (transition && self.transitions[transition]) ? transition : 'cube';
-  };
+  function _getTransition(element, dir) {
+    var direction = (dir === 'up' || dir === 'down') ? 'vertical' : 'horizontal';
+    return _lookup(_transitions, [element, direction]);
+  }
+
+  /**
+   * Set the `transition` for an `element` going in the `dir` movement.
+   */
+  function _setTransition(element, transition, dir) {
+    transition = (!transition || self.transitions.indexOf(transition) < 0) ? 'cube' : transition;
+    if (!_transitions[element]) {
+      _transitions[element] = {};
+    }
+    _transitions[element][dir] = transition;
+    return transition;
+  }
 
   /**
    * Applies the out transition to an `element` being displaced by a slide coming from the `dir` direction.
    */
   function _transitionOut(element, dir) {
-    if (element && $(element).length) {
-      var transition = _getTransition();
-      // Apply the css transform to the element.
-      if (_cssApply(element, transition, 'out', dir)) {
-        return true;
+    if (element && $(element).length && dir) {
+      var transition = _getTransition(element, dir);
+      if (transition) {
+        // Apply the css transform to the element.
+        if (_cssApply(element, transition, 'out', dir)) {
+          return true;
+        }
       }
     }
     return false;
@@ -182,13 +205,15 @@ function Slidr() {
    * Applies the in transition to an `element` entering the Slidr viewport, from the `dir` direction.
    */
   function _transitionIn(element, dir) {
-    if (element && $(element).length) {
-      var transition = _getTransition();
-      // Apply css reset to the current element.
-      if (_cssReset(element, transition, dir)) {
-        // Now apply the css transform.
-        if (_cssApply(element, transition, 'in', dir)) {
-          return true;
+    if (element && $(element).length && dir) {
+      var transition = _getTransition(element, dir);
+      if (transition) {
+        // Apply css reset to the current element.
+        if (_cssReset(element, transition, dir)) {
+          // Now apply the css transform.
+          if (_cssApply(element, transition, 'in', dir)) {
+            return true;
+          }
         }
       }
     }
@@ -298,7 +323,7 @@ function Slidr() {
       if (_slidr[current]) {
         var existingLeft = _slidr[current].left;
         var existingRight = _slidr[current].right;
-        var previousLeft = _lookup(_slidr, [newRight, 'left'])
+        var previousLeft = _lookup(_slidr, [newRight, 'left']);
         // Are we about to override an existing mapping?
         if ((existingRight && newRight && existingRight != newRight)
           || (existingLeft && newLeft && existingLeft != newLeft)
@@ -312,7 +337,7 @@ function Slidr() {
       } else {
         _slidr[current] = {};
       }
-      if (_cssInit(current, _getTransition(opt_transition))) {
+      if (_cssInit(current, _setTransition(current, opt_transition, 'horizontal'))) {
         if (!_start) {
           _start = current;
         }
@@ -339,7 +364,7 @@ function Slidr() {
       if (_slidr[current]) {
         var existingUp = _slidr[current].up;
         var existingDown = _slidr[current].down;
-        var previousUp = _lookup(_slidr, [newDown, 'up'])
+        var previousUp = _lookup(_slidr, [newDown, 'up']);
         // Are we about to override an existing mapping?
         if ((existingUp && newUp && existingUp != newUp)
           || (existingDown && newDown && existingDeft != newDown)
@@ -353,7 +378,7 @@ function Slidr() {
       } else {
         _slidr[current] = {};
       }
-      if (_cssInit(current, _getTransition(opt_transition))) {
+      if (_cssInit(current, _setTransition(current, opt_transition, 'vertical'))) {
         if (!_start) {
           _start = current;
         }
@@ -371,22 +396,30 @@ function Slidr() {
   /**
    * Slide up.
    */
-  self.up = function() { return _slide('up') };
+  self.up = function() {
+    return _slide('up');
+  };
 
   /**
    * Slide down.
    */
-  self.down = function() { return _slide('down') };
+  self.down = function() {
+    return _slide('down');
+  };
 
   /**
    * Slide left.
    */
-  self.left = function() { return _slide('left') };
+  self.left = function() {
+    return _slide('left');
+  };
 
   /**
    * Slide right.
    */
-  self.right = function() { return _slide('right') };
+  self.right = function() {
+    return _slide('right');
+  };
 
   /**
    * Start the Slidr!
@@ -403,7 +436,8 @@ function Slidr() {
         'display': 'table',
       });
       _current = _start;
-      $(_current).css({'z-index': '1', 'opacity': '1'});
+      // Hide/show to force a redraw.
+      $(_current).hide().css({'z-index': '1', 'opacity': '1'}).show();
       // TODO: Detect height changes.
       _setHeight($(_current).height());
       _dynamicBindings();
