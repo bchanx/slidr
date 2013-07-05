@@ -8,11 +8,11 @@
  * slidr - A simple Javascript library for adding slide effects. Currently under development.
  */
 
-function SlidrException(message) {
+var SlidrException = SlidrException || function(message) {
   this.message = message;
 }
 
-function Slidr() {
+var Slidr = Slidr || function() {
   /**
    * A {mapping} of slides to their neighbors.
    */
@@ -39,54 +39,123 @@ function Slidr() {
   var _css = {
     'cube': {
       'init': {
-        '-webkit-transition': 'all 1s cubic-bezier(0.15, 0.9, 0.25, 1)',
-        '-moz-transition': 'all 1s cubic-bezier(0.15, 0.9, 0.25, 1)',
-        '-o-transition': 'all 1s cubic-bezier(0.15, 0.9, 0.25, 1)',
-        '-webkit-backface-visibility': 'hidden',
-        '-moz-backface-visibility': 'hidden',
-        'backface-visibility': 'hidden',
-        '-webkit-transform-style': 'preserve-3d',
-        '-moz-transform-style': 'preserve-3d',
-        'transform-style': 'preserve-3d',
+        'default': _extend([
+          _cssPrefixer('backface-visibility', 'hidden', ['webkit', 'moz']),
+          _cssPrefixer('transform-style', 'preserve-3d', ['webkit', 'moz'])
+        ]),
+        'transitions': function(element) {
+          return _cssFixupTransitions(element,
+            _cssPrefixer('transition', 'transform 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s,' +
+                         ' opacity 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s', ['webkit', 'moz', 'o']));
+        }
       },
       'reset': {
-        'left': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)") },
-        'right': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)") },
-        'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
-        'down': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
+        'left': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)"); },
+        'right': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)"); },
+        'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
+        'down': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)"); },
       },
-      'in': {
-        'left': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)") },
-        'right': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)") },
-        'up': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)") },
-        'down': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)") },
-      },
-      'out': {
-        'left': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)") },
-        'right': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)") },
-        'up': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)") },
-        'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)") },
-      } 
+      'transition': {
+        'in': {
+          'left': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)"); },
+          'right': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)"); },
+          'up': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)"); },
+          'down': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)"); },
+        },
+        'out': {
+          'left': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)"); },
+          'right': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)"); },
+          'up': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)"); },
+          'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
+        }
+      }
     }
   };
+
+  /**
+   * Append css transitions to an element, instead of overwriting them.
+   */
+  function _cssFixupTransitions(element, transitions) {
+    if (!!element && $(element).length && _isObject(transitions)) {
+      for (var t in transitions) {
+        var current = $(element).css(t);
+        if (!!current && _isString(current) && current != 'all 0s ease 0s' && current != transitions[t]) {
+          // Already have a transition set, append new transitions.
+          transitions[t] = current + ', ' + transitions[t];
+        }
+      }
+    }
+    return transitions;
+  }
+
+  /**
+   * Append css browser prefixes to properties.
+   * @param {string} property CSS property name.
+   * @param {string || Array} values CSS property value(s) to apply.
+   * @param {Array} prefixes [list] of browser prefixes to append.
+   * @return {Object} map of css {property:value}.
+   */
+  function _cssPrefixer(property, values, prefixes) {
+    var css = {};
+    if (!!property && !!values) {
+      values = (_isString(values)) ? values.split(', ') : values;
+      if (_isArray(values)) {
+        css[property] = values.join(', ');
+        if (_isArray(prefixes) && prefixes.length) {
+          var hasTransform = -1;
+          for (var i = 0; i < values.length; i++) {
+            if (values[i].indexOf('transform') == 0) {
+              hasTransform = i;
+              break;
+            }
+          }
+          for (var i = 0; i < prefixes.length; i++) {
+            var prefix = '-' + prefixes[i] + '-';
+            var original = null;
+            if (hasTransform >= 0) {
+              original = values[hasTransform];
+              values[hasTransform] = prefix + original;
+            }
+            css[prefix + property] = values.join(', ');
+            if (hasTransform >= 0 && original) {
+              values[hasTransform] = original;
+            }
+          }
+        }
+      }
+    }
+    return css;
+  }
+
+  /**
+   * Helper for applying CSS transform rules.
+   */
+  function _cssTransform(rules) {
+    return {
+      '-webkit-transform': rules,
+      '-moz-transform': rules,
+      '-o-transform': rules,
+      'transform': rules,
+    }
+  }
 
   /**
    * CSS rules to apply to all slides in our Slidr when we initialize.
    */
   function _cssInit(element, transition) {
-    var css = _lookup(_css, [transition, 'init']);
+    var css = _lookup(_css, [transition, 'init', 'default']);
     if (element && $(element).length && css) {
       var display = $(element).css('display');
-      display = (display === 'none') ? 'block' : display;
-      _extend(css, {
-        'display': display,
+      var extra = {
+        'display': (display === 'none') ? 'block' : display,
         'opacity': '0',
         'position': 'absolute',
         'left': '50%',
         'margin-left': '-' + $(element).width()/2 + 'px',
-        'z-index': '-1'
-      });
-      $(element).css(css);
+        'pointer-events': 'none'
+      };
+      var transitions = _lookup(_css, [transition, 'init', 'transitions'])(element);
+      $(element).css(_extend([extra, transitions], css));
       return true;
     }
     return false;
@@ -109,28 +178,19 @@ function Slidr() {
   /**
    * CSS rules to apply to an `element`, coming [in|out] as `type`, from the `dir` direction with `transition` effects.
    */
-  function _cssApply(element, transition, type, dir) {
-    var css = _lookup(_css, [transition, type, dir]);
+  function _cssTransition(element, transition, type, dir) {
+    var css = _lookup(_css, [transition, 'transition', type, dir]);
     if (element && $(element).length && css) {
       css = (dir === 'up' || dir === 'down') ? css($(element).height()) : css($(element).width());
-      var opacity = (type === 'in') ? '1' : '0';
+      var extra = {
+        'opacity': (type === 'in') ? '1': '0',
+        'pointer-events': (type === 'in') ? 'auto': 'none'
+      };
       // Show the slide again after hiding.
-      $(element).css(css).css('opacity', opacity).show();
+      $(element).css(_extend(extra, css)).show();
       return true;
     }
     return false;
-  }
-
-  /**
-   * Helper for applying CSS transform rules.
-   */
-  function _cssTransform(rules) {
-    return {
-      '-webkit-transform': rules,
-      '-moz-transform': rules,
-      '-o-transform': rules,
-      'transform': rules,
-    }
   }
 
   /**
@@ -151,18 +211,46 @@ function Slidr() {
   }
 
   /**
-   * Add all key:values found in {from} to {to}, in place. Overwrites existing keys by default.
+   * Check if object is a string.
    */
-  function _extend(to, from, opt_noOverwrite) {
-    if (!!to && to.constructor === Object && !!from && from.constructor === Object) {
-      for (var f in from) {
-        if (to.hasOwnProperty(f) && !!opt_noOverwrite) {
-          continue;
+  function _isString(obj) {
+    return (!!obj) && (typeof obj === 'string');
+  }
+
+  /**
+   * Check if object is an [Array].
+   */
+  function _isArray(obj) {
+    return (!!obj) && (obj.constructor === Array);
+  }
+
+  /**
+   * Check if object is an {Object}.
+   */
+  function _isObject(obj) {
+    return (!!obj) && (obj.constructor === Object);
+  }
+
+  /**
+   * Add all key:values found in [{from}, ..] to {to}, in place. Overwrites existing keys by default.
+   */
+  function _extend(from, to, opt_noOverwrite) {
+    to = (_isObject(to)) ? to : {};
+    if (_isObject(from)) {
+      from = [from];
+    }
+    if (_isArray(from)) {
+      var values;
+      for (var i = 0; values = from[i]; i++) {
+        for (var v in values) {
+          if (to.hasOwnProperty(v) && !!opt_noOverwrite) {
+            continue;
+          }
+          to[v] = values[v];
         }
-        to[f] = from[f];
       }
     }
-    return to || {};
+    return to;
   }
 
   /**
@@ -192,8 +280,8 @@ function Slidr() {
     if (element && $(element).length && dir) {
       var transition = _getTransition(element, dir);
       if (transition) {
-        // Apply the css transform to the element.
-        if (_cssApply(element, transition, 'out', dir)) {
+        // Apply the css transition triggers to the element.
+        if (_cssTransition(element, transition, 'out', dir)) {
           return true;
         }
       }
@@ -210,8 +298,9 @@ function Slidr() {
       if (transition) {
         // Apply css reset to the current element.
         if (_cssReset(element, transition, dir)) {
-          // Now apply the css transform.
-          if (_cssApply(element, transition, 'in', dir)) {
+          // Now apply the css transition triggers.
+          if (_cssTransition(element, transition, 'in', dir)) {
+            _setHeight($(element).height());
             return true;
           }
         }
@@ -269,11 +358,6 @@ function Slidr() {
    * Who am I?
    */
   var self = this;
-
-  /**
-   * [List] of available slide transitions.
-   */
-  self.transitions = ['cube'];
 
   /**
     * Adds a set of slides to our Slidr.
@@ -394,6 +478,11 @@ function Slidr() {
   };
 
   /**
+   * [List] of available slide transitions.
+   */
+  self.transitions = ['cube'];
+
+  /**
    * Slide up.
    */
   self.up = function() {
@@ -437,8 +526,7 @@ function Slidr() {
       });
       _current = _start;
       // Hide/show to force a redraw.
-      $(_current).hide().css({'z-index': '1', 'opacity': '1'}).show();
-      // TODO: Detect height changes.
+      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).show();
       _setHeight($(_current).height());
       _dynamicBindings();
     }
