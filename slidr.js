@@ -10,7 +10,7 @@
 
 var SlidrException = SlidrException || function(message) {
   this.message = message;
-}
+};
 
 var Slidr = Slidr || function() {
   /**
@@ -531,7 +531,7 @@ var Slidr = Slidr || function() {
       _dynamicBindings();
     }
   };
-}
+};
 
 $(function() {
   if ($('#slidr').length) {
