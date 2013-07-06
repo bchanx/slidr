@@ -597,18 +597,6 @@ var Slidr = Slidr || function() {
     var _domPrefix = null;
     var _propertyCache = {};
 
-    function _isString(obj) {
-      return (!!obj) && (typeof obj === 'string');
-    }
-
-    function _isArray(obj) {
-      return (!!obj) && (obj.constructor === Array);
-    }
-
-    function _isObject(obj) {
-      return (!!obj) && (obj.constructor === Object);
-    }
-
     /**
      * Adds a CSS rule to our custom stylesheet.
      */
