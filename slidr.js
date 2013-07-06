@@ -595,7 +595,7 @@ var Slidr = Slidr || function() {
      * Resolves a css property name to the browser supported name, or null if not supported.
      */
     self.resolve = function(cssProperty) {
-      if (_propertyCache[cssProperty]) {
+      if (_propertyCache[cssProperty] !== undefined) {
         return _propertyCache[cssProperty];
       }
       var result = _normalize(cssProperty);
