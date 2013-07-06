@@ -32,14 +32,16 @@ var Slidr = Slidr || function() {
       _start = opt_start;
     }
     if ($('#slidr').length && _start && $(_start).length) {
-      $('#slidr').css({
+      var css = {
         'position': 'relative',
         'width': '100%',
         'display': 'table',
-        '-webkit-box-sizing': 'border-box',
-        '-moz-box-sizing': 'border-box',
-        'box-sizing': 'border-box',
-      });
+      };
+      var boxSizing = _slidrCSS.resolve('box-sizing');
+      if (!!boxSizing) {
+        css[boxSizing] = 'border-box';
+      }
+      $('#slidr').css(css);
       _current = _start;
       // Hide/show to force a redraw.
       $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
@@ -147,6 +149,11 @@ var Slidr = Slidr || function() {
   var _current = null;
 
   /**
+   * Helper for generating browser compatible CSS.
+   */
+  var _slidrCSS = new SlidrCSS();
+
+  /**
    * Check if object is a string.
    */
   function _isString(obj) {
@@ -215,54 +222,82 @@ var Slidr = Slidr || function() {
         _cssPrefixer('backface-visibility', 'hidden', ['webkit', 'moz']),
         _cssPrefixer('transform-style', 'preserve-3d', ['webkit', 'moz'])
       ]),
-      'reset': {
-        'transitions': _cssPrefixer('transition', 'transform 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s,' +
-            ' opacity 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s', ['webkit', 'moz', 'o']
-        ),
-        'left': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)"); },
-        'right': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)"); },
-        'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
-        'down': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)"); },
-      },
-      'transition': {
-        'in': {
-          'left': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)"); },
-          'right': function(width) { return _cssTransform("rotateY(0deg) translateZ(" + width/2 + "px)"); },
-          'up': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)"); },
-          'down': function(height) { return _cssTransform("rotateX(0deg) translateZ(" + height/2 + "px)"); },
+      'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
+      'in': {
+        'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-left', {
+          '0': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
         },
-        'out': {
-          'left': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)"); },
-          'right': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)"); },
-          'up': function(height) { return _cssTransform("rotateX(-90deg) translateZ(" + height/2 + "px)"); },
-          'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
-        }
+        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-right', {
+          '0': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
+        },
+        'up': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-up', {
+          '0': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
+        },
+        'down': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-down', {
+          '0': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
+        },
+      },
+      'out': {
+        'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-out-left', {
+          '0': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' },
+          '100': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' }})
+        },
+        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-out-right', {
+          '0': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' },
+          '100': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' }})
+        },
+        'up': function(height) { _slidrCSS.createKeyframe('slidr-cube-out-up', {
+          '0': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' },
+          '100': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' }})
+        },
+        'down': function(height) { _slidrCSS.createKeyframe('slidr-cube-out-down', {
+          '0': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' },
+          '100': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' }})
+        },
       }
     },
     'linear': {
       'init': null,
-      'reset': {
-        'transitions': _cssPrefixer('transition', 'transform 0.6s ease-out 0s,' +
-          ' opacity 0.6s ease-out 0s', ['webkit', 'moz', 'o']
-        ),
-        'left': function(width) { return _cssTransform("translateX(-" + width + "px)"); },
-        'right': function(width) { return _cssTransform("translateX(" + width + "px)"); },
-        'up': function(height) { return _cssTransform("translateY(-" + height + "px)"); },
-        'down': function(height) { return _cssTransform("translateY(" + height + "px)"); },
-      },
-      'transition': {
-        'in': {
-          'left': function(width) { return _cssTransform("translateX(0px)"); },
-          'right': function(width) { return _cssTransform("translateX(0px)"); },
-          'up': function(height) { return _cssTransform("translateY(0px)"); },
-          'down': function(height) { return _cssTransform("translateY(0px)"); },
+      'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
+      'in': {
+        'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-left', {
+          '0': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
         },
-        'out': {
-          'left': function(width) { return _cssTransform("translateX(" + width + "px)"); },
-          'right': function(width) { return _cssTransform("translateX(-" + width + "px)"); },
-          'up': function(height) { return _cssTransform("translateY(" + height + "px)"); },
-          'down': function(height) { return _cssTransform("translateY(-" + height + "px)"); },
-        }
+        'right': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-right', {
+          '0': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
+        },
+        'up': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-up', {
+          '0': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
+        },
+        'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-down', {
+          '0': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
+        },
+      },
+      'out': {
+        'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-out-left', {
+          '0': { 'transform': 'translateX(0px)', 'opacity': '1' },
+          '100': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' }})
+        },
+        'right': function(width) {_slidrCSS.createKeyframe('slidr-linear-out-right', {
+          '0': { 'transform': 'translateX(0px)', 'opacity': '1' },
+          '100': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' }})
+        },
+        'up': function(height) { _slidrCSS.createKeyframe('slidr-linear-out-up', {
+          '0': { 'transform': 'translateY(0px)', 'opacity': '1' },
+          '100': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' }})
+        },
+        'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-out-down', {
+          '0': { 'transform': 'translateY(0px)', 'opacity': '1' },
+          '100': { 'transform': 'translateY(-' + height + ')', 'opacity': '0' }})
+        },
       }
     }
   };
@@ -340,40 +375,23 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * CSS rules pre-apply to an `element`, coming [in|out] as `type` from `dir`, with `transition` effects. 
+   * Animate the `element` coming [in|out] as `type`, from the `dir` direction with `transition` effects.
    */
-  function _cssReset(element, transition, type, dir) {
+  function _cssAnimate(element, transition, type, dir) {
     if (element && $(element).length) {
-      // Reset transitions
-      var css = _lookup(_css, [transition, 'reset', 'transitions']) || {};
-      if (type === 'in') {
-        // Slide coming in, reset location as well.
-        var movement = _lookup(_css, [transition, 'reset', dir]);
-        movement = (dir === 'up' || dir === 'down') ? movement($(element).height()) : movement($(element).width());
-        _extend(movement, css);
-        $(element).css(css).hide();
-      } else {
+      var animation = _slidrCSS.resolve('animation');
+      if (!!animation) {
+        var timing = _lookup(_css, [transition, 'timing'])(['slidr', transition, type, dir].join('-'));
+        var keyframe = _lookup(_css, [transition, type, dir]);
+        (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+        var css = {
+          'opacity': (type === 'in') ? '1': '0',
+          'pointer-events': (type === 'in') ? 'auto': 'none'
+        };
+        css[animation] = timing;
         $(element).css(css);
+        return true;
       }
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * CSS rules to apply to an `element`, coming [in|out] as `type`, from the `dir` direction with `transition` effects.
-   */
-  function _cssTransition(element, transition, type, dir) {
-    var css = _lookup(_css, [transition, 'transition', type, dir]);
-    if (element && $(element).length && css) {
-      css = (dir === 'up' || dir === 'down') ? css($(element).height()) : css($(element).width());
-      var extra = {
-        'opacity': (type === 'in') ? '1': '0',
-        'pointer-events': (type === 'in') ? 'auto': 'none'
-      };
-      // Show the slide again after hiding.
-      $(element).css(_extend(extra, css)).show();
-      return true;
     }
     return false;
   }
@@ -405,11 +423,7 @@ var Slidr = Slidr || function() {
     if (element && $(element).length && dir) {
       var transition = _getTransition(element, dir);
       if (transition) {
-        // Apply css reset to the current element.
-        if (_cssReset(element, transition, 'out', dir)) {
-          // Now apply the css transition triggers.
-          return _cssTransition(element, transition, 'out', dir);
-        }
+        return _cssAnimate(element, transition, 'out', dir);
       }
     }
     return false;
@@ -422,11 +436,7 @@ var Slidr = Slidr || function() {
     if (element && $(element).length && dir) {
       var transition = _getTransition(element, dir);
       if (transition) {
-        // Apply css reset to the current element.
-        if (_cssReset(element, transition, 'in', dir)) {
-          // Now apply the css transition triggers.
-          return _cssTransition(element, transition, 'in', dir);
-        }
+        return _cssAnimate(element, transition, 'in', dir);
       }
     }
     return false;
@@ -583,11 +593,15 @@ var Slidr = Slidr || function() {
     return true;
   }
 
+  // TODO: remove me!
+  self.SlidrCSSHelper = function() {
+    return new SlidrCSS();
+  }
+
   /**
    * Helper for creating Slidr CSS.
    */
-  // TODO: Make this private.
-  self.SlidrCSS = function() {
+  function SlidrCSS() {
 
     var self = this;
 
@@ -672,7 +686,7 @@ var Slidr = Slidr || function() {
         _styleSheet = document.styleSheets[styleSheetIndex];
       }
       var rules = _styleSheet.cssRules;
-      for (var r = 0; r < rules.length; cr++) {
+      for (var r = 0; r < rules.length; r++) {
         // Delete the rule if it already exists.
         if (rules[r]['name'] == name) {
           _styleSheet.deleteRule(r);
