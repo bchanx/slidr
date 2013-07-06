@@ -294,7 +294,7 @@ var Slidr = Slidr || function() {
       if (transition) {
         // Apply css reset to the current element.
         if (_cssReset(element, transition, 'out', dir)) {
-          // Now aply the css transition triggers.
+          // Now apply the css transition triggers.
           return _cssTransition(element, transition, 'out', dir);
         }
       }
