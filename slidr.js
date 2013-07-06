@@ -596,7 +596,7 @@ var Slidr = Slidr || function() {
   // TODO: remove me!
   self.SlidrCSSHelper = function() {
     return new SlidrCSS();
-  }
+  };
 
   /**
    * Helper for creating Slidr CSS.
