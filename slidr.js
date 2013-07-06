@@ -14,6 +14,119 @@ var SlidrException = SlidrException || function(message) {
 
 var Slidr = Slidr || function() {
   /**
+   * Who am I?
+   */
+  var self = this;
+
+  /**
+   * [List] of available slide transitions.
+   */
+  self.transitions = ['cube', 'linear'];
+
+  /**
+   * Start the Slidr!
+   * Defaults to showing the first slide added. Specify a slide to begin with using `opt_start`.
+   */
+  self.init = function(opt_start) {
+    if (!!opt_start && !!_slidr[opt_start]) {
+      _start = opt_start;
+    }
+    if ($('#slidr').length && _start && $(_start).length) {
+      $('#slidr').css({
+        'position': 'relative',
+        'width': '100%',
+        'display': 'table',
+        '-webkit-box-sizing': 'border-box',
+        '-moz-box-sizing': 'border-box',
+        'box-sizing': 'border-box',
+      });
+      _current = _start;
+      // Hide/show to force a redraw.
+      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
+      _watchHeightChange();
+      _dynamicBindings();
+    }
+  };
+
+  /**
+   * Slide up.
+   */
+  self.up = function() {
+    return _slide('up');
+  };
+
+  /**
+   * Slide down.
+   */
+  self.down = function() {
+    return _slide('down');
+  };
+
+  /**
+   * Slide left.
+   */
+  self.left = function() {
+    return _slide('left');
+  };
+
+  /**
+   * Slide right.
+   */
+  self.right = function() {
+    return _slide('right');
+  };
+
+  /**
+   * Adds a set of slides to our Slidr.
+   * `slides` - expects an object with a `horizontal` and/or a `vertical` field, which contains [lists] of DOM elements
+   * we wish to transform into slides.
+   *
+   * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use a
+   * default transition if nothing is given.
+   *
+   * `opt_warn` - by default, Slidr does a best-effort to compile the slides according to the given specifications.
+   * We silently abort adding the rest of a row if we end up redefining the same transition to two different slides.
+   * Use this flag if you want it to throw an exception instead (useful during development).
+   *
+   * e.g. `slides`:
+   * { 
+   *   'horizontal': [
+   *     ['#one', '#two', '#three', '#four'],
+   *   ],
+   *   'vertical': [
+   *     ['#five', '#two', '#six'],
+   *     ['#seven', '#four', '#eight'],
+   *   ]
+   * }
+   */
+  self.add = function(slides, opt_transition, opt_warn) {
+    if (slides.horizontal) {
+      for (var i = 0; i < slides.horizontal.length; i++) {
+        _addHorizontal(slides.horizontal[i], opt_transition, opt_warn);
+      }
+    }
+    if (slides.vertical) {
+      for (var i = 0; i < slides.vertical.length; i++) {
+        _addVertical(slides.vertical[i], opt_transition, opt_warn);
+      }
+    }
+  };
+  
+  /**
+   * Convenience helper for adding a set of horizontal slides.
+   */
+  self.addHorizontal = function(slides, opt_transition, opt_warn) {
+    _addHorizontal(slides, opt_transition, opt_warn);
+  };
+
+  /**
+   * Convenience helper for adding a set of vertical slides.
+   */
+  self.addVertical = function(slides, opt_transition, opt_warn) {
+    _addVertical(slides, opt_transition, opt_warn);
+  };
+
+  /**
    * A {mapping} of slides to their neighbors.
    */
   var _slidr = {};
@@ -32,6 +145,66 @@ var Slidr = Slidr || function() {
    * The current slide.
    */
   var _current = null;
+
+  /**
+   * Check if object is a string.
+   */
+  function _isString(obj) {
+    return (!!obj) && (typeof obj === 'string');
+  }
+
+  /**
+   * Check if object is an [Array].
+   */
+  function _isArray(obj) {
+    return (!!obj) && (obj.constructor === Array);
+  }
+
+  /**
+   * Check if object is an {Object}.
+   */
+  function _isObject(obj) {
+    return (!!obj) && (obj.constructor === Object);
+  }
+
+  /**
+   * Traverse [keys] in {object} to lookup a value, or null if nothing found.
+   */
+  function _lookup(obj, keys) {
+    var result = null;
+    if (!!obj && obj.constructor === Object && !!keys && keys.constructor === Array) {
+      result = obj;
+      for (var k in keys) {
+        if (!result.hasOwnProperty(keys[k])) {
+          return null;
+        }
+        result = result[keys[k]];
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Add all key:values found in [{from}, ..] to {to}, in place. Overwrites existing keys by default.
+   */
+  function _extend(from, to, opt_noOverwrite) {
+    to = (_isObject(to)) ? to : {};
+    if (_isObject(from)) {
+      from = [from];
+    }
+    if (_isArray(from)) {
+      var values;
+      for (var i = 0; values = from[i]; i++) {
+        for (var v in values) {
+          if (to.hasOwnProperty(v) && !!opt_noOverwrite) {
+            continue;
+          }
+          to[v] = values[v];
+        }
+      }
+    }
+    return to;
+  }
 
   /**
    * Defines our available css transitions.
@@ -206,66 +379,6 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Traverse [keys] in {object} to lookup a value, or null if nothing found.
-   */
-  function _lookup(obj, keys) {
-    var result = null;
-    if (!!obj && obj.constructor === Object && !!keys && keys.constructor === Array) {
-      result = obj;
-      for (var k in keys) {
-        if (!result.hasOwnProperty(keys[k])) {
-          return null;
-        }
-        result = result[keys[k]];
-      }
-    }
-    return result;
-  }
-
-  /**
-   * Check if object is a string.
-   */
-  function _isString(obj) {
-    return (!!obj) && (typeof obj === 'string');
-  }
-
-  /**
-   * Check if object is an [Array].
-   */
-  function _isArray(obj) {
-    return (!!obj) && (obj.constructor === Array);
-  }
-
-  /**
-   * Check if object is an {Object}.
-   */
-  function _isObject(obj) {
-    return (!!obj) && (obj.constructor === Object);
-  }
-
-  /**
-   * Add all key:values found in [{from}, ..] to {to}, in place. Overwrites existing keys by default.
-   */
-  function _extend(from, to, opt_noOverwrite) {
-    to = (_isObject(to)) ? to : {};
-    if (_isObject(from)) {
-      from = [from];
-    }
-    if (_isArray(from)) {
-      var values;
-      for (var i = 0; values = from[i]; i++) {
-        for (var v in values) {
-          if (to.hasOwnProperty(v) && !!opt_noOverwrite) {
-            continue;
-          }
-          to[v] = values[v];
-        }
-      }
-    }
-    return to;
-  }
-
-  /**
    * Get the next transition for `element` entering/leaving the viewport from `dir` direction.
    */
   function _getTransition(element, dir) {
@@ -389,50 +502,9 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Who am I?
-   */
-  var self = this;
-
-  /**
-    * Adds a set of slides to our Slidr.
-    * `slides` - expects an object with a `horizontal` and/or a `vertical` field, which contains [lists] of DOM elements
-    * we wish to transform into slides.
-    *
-    * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use a
-    * default transition if nothing is given.
-    *
-    * `opt_warn` - by default, Slidr does a best-effort to compile the slides according to the given specifications.
-    * We silently abort adding the rest of a row if we end up redefining the same transition to two different slides.
-    * Use this flag if you want it to throw an exception instead (useful during development).
-    *
-    * e.g. `slides`:
-    * { 
-    *   'horizontal': [
-    *     ['#one', '#two', '#three', '#four'],
-    *   ],
-    *   'vertical': [
-    *     ['#five', '#two', '#six'],
-    *     ['#seven', '#four', '#eight'],
-    *   ]
-    * }
-    */
-  self.add = function(slides, opt_transition, opt_warn) {
-    if (slides.horizontal) {
-      for (var i = 0; i < slides.horizontal.length; i++) {
-        self.addHorizontal(slides.horizontal[i], opt_transition, opt_warn);
-      }
-    }
-    if (slides.vertical) {
-      for (var i = 0; i < slides.vertical.length; i++) {
-        self.addVertical(slides.vertical[i], opt_transition, opt_warn);
-      }
-    }
-  };
-  
-  /**
    * Adds a [list] of slides we want to navigate in the left/right direction.
    */
-  self.addHorizontal = function(slides, opt_transition, opt_warn) {
+  function _addHorizontal(slides, opt_transition, opt_warn) {
     var current;
     // For each slide, add it to our mapping.
     for (var i = 0; current = slides[i]; i++) {
@@ -468,12 +540,12 @@ var Slidr = Slidr || function() {
       }
     }
     return true;
-  };
+  }
 
   /**
    * Adds a [list] of slides that we want to navigate in the up/down direction.
    */
-  self.addVertical = function(slides, opt_transition, opt_warn) {
+  function _addVertical(slides, opt_transition, opt_warn) {
     var current;
     // For each slide, add it to our slidr mapping.
     for (var i = 0; current = slides[i]; i++) {
@@ -509,63 +581,150 @@ var Slidr = Slidr || function() {
       }
     }
     return true;
-  };
+  }
 
   /**
-   * [List] of available slide transitions.
+   * Helper for creating Slidr CSS.
    */
-  self.transitions = ['cube', 'linear'];
+  // TODO: Make this private.
+  self.SlidrCSS = function() {
 
-  /**
-   * Slide up.
-   */
-  self.up = function() {
-    return _slide('up');
-  };
+    var self = this;
 
-  /**
-   * Slide down.
-   */
-  self.down = function() {
-    return _slide('down');
-  };
+    var _style = document.getElementsByTagName('html')[0]['style'];
+    var _styleSheet = null;
+    var _cssPrefix = null;
+    var _domPrefix = null;
+    var _propertyCache = {};
 
-  /**
-   * Slide left.
-   */
-  self.left = function() {
-    return _slide('left');
-  };
-
-  /**
-   * Slide right.
-   */
-  self.right = function() {
-    return _slide('right');
-  };
-
-  /**
-   * Start the Slidr!
-   * Defaults to showing the first slide added. Specify a slide to begin with using `opt_start`.
-   */
-  self.init = function(opt_start) {
-    if (!!opt_start && !!_slidr[opt_start]) {
-      _start = opt_start;
+    function _isString(obj) {
+      return (!!obj) && (typeof obj === 'string');
     }
-    if ($('#slidr').length && _start && $(_start).length) {
-      $('#slidr').css({
-        'position': 'relative',
-        'width': '100%',
-        'display': 'table',
-        '-webkit-box-sizing': 'border-box',
-        '-moz-box-sizing': 'border-box',
-        'box-sizing': 'border-box',
-      });
-      _current = _start;
-      // Hide/show to force a redraw.
-      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
-      _watchHeightChange();
-      _dynamicBindings();
+
+    function _isArray(obj) {
+      return (!!obj) && (obj.constructor === Array);
+    }
+
+    function _isObject(obj) {
+      return (!!obj) && (obj.constructor === Object);
+    }
+
+    /**
+     * Adds a CSS rule to our custom stylesheet.
+     */
+    function _addKeyframeRule(name, rule) {
+      if (!_styleSheet) {
+        var styleSheetIndex = 0;
+        if (document.styleSheets && document.styleSheets.length) {
+          styleSheetIndex = document.styleSheets.length;
+        }
+        var style = document.createElement('style');
+        document.head.appendChild(style);
+        _styleSheet = document.styleSheets[styleSheetIndex];
+      }
+      var rules = _styleSheet.cssRules;
+      for (var r = 0; r < rules.length; cr++) {
+        // Delete the rule if it already exists.
+        if (rules[r]['name'] == name) {
+          _styleSheet.deleteRule(r);
+          break;
+        }
+      }
+      // Now insert it. 
+      _styleSheet.insertRule(rule, rules.length);
+    }
+
+    /**
+     * Creates a keyframe animation rule.
+     */
+    self.createKeyframe = function(name, rules) {
+      // Make sure we support animations.
+      if (!self.resolve('animation')) {
+        return false;
+      }
+      // Make sure all animation properties are supported.
+      for (var r in rules) {
+        var properties = rules[r];
+        for (var p in properties) {
+          if (!self.resolve(p)) {
+            return false;
+          }
+        }
+      }
+      var prefix = _cssPrefix || '';
+      var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
+      for (var r in rules) {
+        rule.push(r + '% {');
+        var properties = rules[r];
+        for (var p in properties) {
+          rule.push(self.resolve(p) + ': ' + properties[p] + ';');
+        }
+        rule.push('}');
+      }
+      rule.push('}');
+      rule = rule.join(' ');
+      _addKeyframeRule(name, rule);
+    };
+
+    function _normalize(cssProperty, opt_domPrefix) {
+      var property = cssProperty;
+      if (_isString(property)) {
+        property = property.split('-');
+        for (var i = 0; i < property.length; i++) {
+          var part = property[i];
+          property[i] = part[0].toUpperCase() + part.toLowerCase().slice(1);
+        }
+        if (!!opt_domPrefix) {
+          property.unshift(opt_domPrefix);
+        } else {
+          property[0] = property[0].toLowerCase();
+        }
+        property = property.join('');
+      }
+      return property;
+    }
+
+    function _getCSSPrefix(cssProperty) {
+      if (_cssPrefix === null && _isString(cssProperty)) {
+        _getDOMPrefix(cssProperty);
+      }
+      return _cssPrefix;
+    }
+
+    function _getDOMPrefix(cssProperty) {
+      if (_domPrefix === null && _isString(cssProperty)) {
+        var DOMPrefixes = ['Webkit', 'Moz', 'ms', 'O', 'Khtml'];
+        for (var i = 0; i < DOMPrefixes.length; i++) {
+          if (_style[_normalize(cssProperty, DOMPrefixes[i])] !== undefined) {
+            _domPrefix = DOMPrefixes[i];
+            _cssPrefix = '-' + DOMPrefixes[i].toLowerCase() + '-';
+            break;
+          }
+        }
+      }
+      return _domPrefix;
+    }
+
+    self.resolve = function(cssProperty) {
+      if (_propertyCache[cssProperty]) {
+        return _propertyCache[cssProperty];
+      }
+      var result = _normalize(cssProperty);
+      if (_style[result] !== undefined) {
+        _propertyCache[cssProperty] = cssProperty;
+        return cssProperty;
+      }
+      var prefix = _getDOMPrefix(cssProperty);
+      if (!!prefix) {
+        result = _normalize(cssProperty, prefix);
+        if (_style[result] !== undefined) {
+          _propertyCache[cssProperty] = _getCSSPrefix() + cssProperty;
+          return _getCSSPrefix() + cssProperty;
+        }
+      }
+      // Browser does not support this property.
+      _propertyCache[cssProperty] = null;
+      return null;
     }
   };
 };
