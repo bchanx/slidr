@@ -591,36 +591,30 @@ var Slidr = Slidr || function() {
 
     var self = this;
 
-    var _style = document.getElementsByTagName('html')[0]['style'];
-    var _styleSheet = null;
-    var _cssPrefix = null;
-    var _domPrefix = null;
-    var _propertyCache = {};
-
     /**
-     * Adds a CSS rule to our custom stylesheet.
+     * Resolves a css property name to the browser supported name, or null if not supported.
      */
-    function _addKeyframeRule(name, rule) {
-      if (!_styleSheet) {
-        var styleSheetIndex = 0;
-        if (document.styleSheets && document.styleSheets.length) {
-          styleSheetIndex = document.styleSheets.length;
-        }
-        var style = document.createElement('style');
-        document.head.appendChild(style);
-        _styleSheet = document.styleSheets[styleSheetIndex];
+    self.resolve = function(cssProperty) {
+      if (_propertyCache[cssProperty]) {
+        return _propertyCache[cssProperty];
       }
-      var rules = _styleSheet.cssRules;
-      for (var r = 0; r < rules.length; cr++) {
-        // Delete the rule if it already exists.
-        if (rules[r]['name'] == name) {
-          _styleSheet.deleteRule(r);
-          break;
+      var result = _normalize(cssProperty);
+      if (_style[result] !== undefined) {
+        _propertyCache[cssProperty] = cssProperty;
+        return cssProperty;
+      }
+      var prefix = _getDOMPrefix(cssProperty);
+      if (!!prefix) {
+        result = _normalize(cssProperty, prefix);
+        if (_style[result] !== undefined) {
+          _propertyCache[cssProperty] = _getCSSPrefix() + cssProperty;
+          return _getCSSPrefix() + cssProperty;
         }
       }
-      // Now insert it. 
-      _styleSheet.insertRule(rule, rules.length);
-    }
+      // Browser does not support this property.
+      _propertyCache[cssProperty] = null;
+      return null;
+    };
 
     /**
      * Creates a keyframe animation rule.
@@ -654,6 +648,41 @@ var Slidr = Slidr || function() {
       _addKeyframeRule(name, rule);
     };
 
+    var _style = document.getElementsByTagName('html')[0]['style'];
+
+    var _styleSheet = null;
+
+    var _cssPrefix = null;
+
+    var _domPrefix = null;
+
+    var _propertyCache = {};
+
+    /**
+     * Adds a CSS rule to our custom stylesheet.
+     */
+    function _addKeyframeRule(name, rule) {
+      if (!_styleSheet) {
+        var styleSheetIndex = 0;
+        if (document.styleSheets && document.styleSheets.length) {
+          styleSheetIndex = document.styleSheets.length;
+        }
+        var style = document.createElement('style');
+        document.head.appendChild(style);
+        _styleSheet = document.styleSheets[styleSheetIndex];
+      }
+      var rules = _styleSheet.cssRules;
+      for (var r = 0; r < rules.length; cr++) {
+        // Delete the rule if it already exists.
+        if (rules[r]['name'] == name) {
+          _styleSheet.deleteRule(r);
+          break;
+        }
+      }
+      // Now insert it. 
+      _styleSheet.insertRule(rule, rules.length);
+    }
+
     function _normalize(cssProperty, opt_domPrefix) {
       var property = cssProperty;
       if (_isString(property)) {
@@ -672,13 +701,6 @@ var Slidr = Slidr || function() {
       return property;
     }
 
-    function _getCSSPrefix(cssProperty) {
-      if (_cssPrefix === null && _isString(cssProperty)) {
-        _getDOMPrefix(cssProperty);
-      }
-      return _cssPrefix;
-    }
-
     function _getDOMPrefix(cssProperty) {
       if (_domPrefix === null && _isString(cssProperty)) {
         var DOMPrefixes = ['Webkit', 'Moz', 'ms', 'O', 'Khtml'];
@@ -693,26 +715,11 @@ var Slidr = Slidr || function() {
       return _domPrefix;
     }
 
-    self.resolve = function(cssProperty) {
-      if (_propertyCache[cssProperty]) {
-        return _propertyCache[cssProperty];
+    function _getCSSPrefix(cssProperty) {
+      if (_cssPrefix === null && _isString(cssProperty)) {
+        _getDOMPrefix(cssProperty);
       }
-      var result = _normalize(cssProperty);
-      if (_style[result] !== undefined) {
-        _propertyCache[cssProperty] = cssProperty;
-        return cssProperty;
-      }
-      var prefix = _getDOMPrefix(cssProperty);
-      if (!!prefix) {
-        result = _normalize(cssProperty, prefix);
-        if (_style[result] !== undefined) {
-          _propertyCache[cssProperty] = _getCSSPrefix() + cssProperty;
-          return _getCSSPrefix() + cssProperty;
-        }
-      }
-      // Browser does not support this property.
-      _propertyCache[cssProperty] = null;
-      return null;
+      return _cssPrefix;
     }
   };
 };
