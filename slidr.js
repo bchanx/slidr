@@ -38,18 +38,14 @@ var Slidr = Slidr || function() {
    */
   var _css = {
     'cube': {
-      'init': {
-        'default': _extend([
-          _cssPrefixer('backface-visibility', 'hidden', ['webkit', 'moz']),
-          _cssPrefixer('transform-style', 'preserve-3d', ['webkit', 'moz'])
-        ]),
-        'transitions': function(element) {
-          return _cssFixupTransitions(element,
-            _cssPrefixer('transition', 'transform 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s,' +
-                         ' opacity 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s', ['webkit', 'moz', 'o']));
-        }
-      },
+      'init': _extend([
+        _cssPrefixer('backface-visibility', 'hidden', ['webkit', 'moz']),
+        _cssPrefixer('transform-style', 'preserve-3d', ['webkit', 'moz'])
+      ]),
       'reset': {
+        'transitions': _cssPrefixer('transition', 'transform 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s,' +
+            ' opacity 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s', ['webkit', 'moz', 'o']
+        ),
         'left': function(width) { return _cssTransform("rotateY(-90deg) translateZ(" + width/2 + "px)"); },
         'right': function(width) { return _cssTransform("rotateY(90deg) translateZ(" + width/2 + "px)"); },
         'up': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
@@ -69,24 +65,34 @@ var Slidr = Slidr || function() {
           'down': function(height) { return _cssTransform("rotateX(90deg) translateZ(" + height/2 + "px)"); },
         }
       }
-    }
-  };
-
-  /**
-   * Append css transitions to an element, instead of overwriting them.
-   */
-  function _cssFixupTransitions(element, transitions) {
-    if (!!element && $(element).length && _isObject(transitions)) {
-      for (var t in transitions) {
-        var current = $(element).css(t);
-        if (!!current && _isString(current) && current != 'all 0s ease 0s' && current != transitions[t]) {
-          // Already have a transition set, append new transitions.
-          transitions[t] = current + ', ' + transitions[t];
+    },
+    'linear': {
+      'init': null,
+      'reset': {
+        'transitions': _cssPrefixer('transition', 'transform 0.6s ease-out 0s,' +
+          ' opacity 0.6s ease-out 0s', ['webkit', 'moz', 'o']
+        ),
+        'left': function(width) { return _cssTransform("translateX(-" + width + "px)"); },
+        'right': function(width) { return _cssTransform("translateX(" + width + "px)"); },
+        'up': function(height) { return _cssTransform("translateY(-" + height + "px)"); },
+        'down': function(height) { return _cssTransform("translateY(" + height + "px)"); },
+      },
+      'transition': {
+        'in': {
+          'left': function(width) { return _cssTransform("translateX(0px)"); },
+          'right': function(width) { return _cssTransform("translateX(0px)"); },
+          'up': function(height) { return _cssTransform("translateY(0px)"); },
+          'down': function(height) { return _cssTransform("translateY(0px)"); },
+        },
+        'out': {
+          'left': function(width) { return _cssTransform("translateX(" + width + "px)"); },
+          'right': function(width) { return _cssTransform("translateX(-" + width + "px)"); },
+          'up': function(height) { return _cssTransform("translateY(" + height + "px)"); },
+          'down': function(height) { return _cssTransform("translateY(-" + height + "px)"); },
         }
       }
     }
-    return transitions;
-  }
+  };
 
   /**
    * Append css browser prefixes to properties.
@@ -143,7 +149,7 @@ var Slidr = Slidr || function() {
    * CSS rules to apply to all slides in our Slidr when we initialize.
    */
   function _cssInit(element, transition) {
-    var css = _lookup(_css, [transition, 'init', 'default']);
+    var css = _lookup(_css, [transition, 'init']) || {};
     if (element && $(element).length && css) {
       var display = $(element).css('display');
       var extra = {
@@ -154,22 +160,28 @@ var Slidr = Slidr || function() {
         'margin-left': '-' + $(element).width()/2 + 'px',
         'pointer-events': 'none'
       };
-      var transitions = _lookup(_css, [transition, 'init', 'transitions'])(element);
-      $(element).css(_extend([extra, transitions], css));
+      $(element).css(_extend(extra, css));
       return true;
     }
     return false;
   }
 
   /**
-   * CSS rules to apply to an `element` about to enter the Slidr viewport from `dir` with `transition` effects. 
+   * CSS rules pre-apply to an `element`, coming [in|out] as `type` from `dir`, with `transition` effects. 
    */
-  function _cssReset(element, transition, dir) {
-    var css = _lookup(_css, [transition, 'reset', dir]);
-    if (element && $(element).length && css) {
-      css = (dir === 'up' || dir === 'down') ? css($(element).height()) : css($(element).width());
-      // Hide forces the browser to redraw.
-      $(element).css(css).hide();
+  function _cssReset(element, transition, type, dir) {
+    if (element && $(element).length) {
+      // Reset transitions
+      var css = _lookup(_css, [transition, 'reset', 'transitions']) || {};
+      if (type === 'in') {
+        // Slide coming in, reset location as well.
+        var movement = _lookup(_css, [transition, 'reset', dir]);
+        movement = (dir === 'up' || dir === 'down') ? movement($(element).height()) : movement($(element).width());
+        _extend(movement, css);
+        $(element).css(css).hide();
+      } else {
+        $(element).css(css);
+      }
       return true;
     }
     return false;
@@ -280,9 +292,10 @@ var Slidr = Slidr || function() {
     if (element && $(element).length && dir) {
       var transition = _getTransition(element, dir);
       if (transition) {
-        // Apply the css transition triggers to the element.
-        if (_cssTransition(element, transition, 'out', dir)) {
-          return true;
+        // Apply css reset to the current element.
+        if (_cssReset(element, transition, 'out', dir)) {
+          // Now aply the css transition triggers.
+          return _cssTransition(element, transition, 'out', dir);
         }
       }
     }
@@ -297,12 +310,9 @@ var Slidr = Slidr || function() {
       var transition = _getTransition(element, dir);
       if (transition) {
         // Apply css reset to the current element.
-        if (_cssReset(element, transition, dir)) {
+        if (_cssReset(element, transition, 'in', dir)) {
           // Now apply the css transition triggers.
-          if (_cssTransition(element, transition, 'in', dir)) {
-            _setHeight($(element).height());
-            return true;
-          }
+          return _cssTransition(element, transition, 'in', dir);
         }
       }
     }
@@ -316,12 +326,32 @@ var Slidr = Slidr || function() {
     var next = _lookup(_slidr, [_current, dir]);
     if (_current && next) {
       $(_current).stop();
+      var overflow = (dir === 'left' || dir === 'right') ? 'hidden' : 'auto';
+      $('#slidr').css('overflow', overflow);
       _transitionOut(_current, dir);
-      _transitionIn(next, dir);
       _current = next;
+      _transitionIn(_current, dir);
       return true;
     }
     return false;
+  }
+
+  /**
+   * Watch for height changes in the slides, propagate the change to the slidr container.
+   */
+  function _watchHeightChange() {
+    var height = null;
+    var timerId = setInterval((function watchHeight() {
+      if (!$('#slidr').length) {
+        clearInterval(timerId);
+        return;
+      } else if ($('#slidr').css('visibility') === 'hidden') {
+        height = _setHeight(0);
+      } else if (_current && $(_current).length && height != $(_current).height()) {
+        height = _setHeight($(_current).height());
+      }
+      return watchHeight;
+    })(), 250);
   }
 
   /**
@@ -329,8 +359,12 @@ var Slidr = Slidr || function() {
    */
   function _setHeight(height) {
     if ($('#slidr').length) {
-      $('#slidr').css('min-height', height + 'px');
+      var padding = parseInt($('#slidr').css('padding-top').slice(0, -2)) +
+        parseInt($('#slidr').css('padding-bottom').slice(0, -2));
+      $('#slidr').css('height', height + padding + 'px');
+      return height;
     }
+    return null;
   }
 
   /**
@@ -480,7 +514,7 @@ var Slidr = Slidr || function() {
   /**
    * [List] of available slide transitions.
    */
-  self.transitions = ['cube'];
+  self.transitions = ['cube', 'linear'];
 
   /**
    * Slide up.
@@ -521,13 +555,16 @@ var Slidr = Slidr || function() {
     if ($('#slidr').length && _start && $(_start).length) {
       $('#slidr').css({
         'position': 'relative',
-        'margin': '0 auto',
+        'width': '100%',
         'display': 'table',
+        '-webkit-box-sizing': 'border-box',
+        '-moz-box-sizing': 'border-box',
+        'box-sizing': 'border-box',
       });
       _current = _start;
       // Hide/show to force a redraw.
-      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).show();
-      _setHeight($(_current).height());
+      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
+      _watchHeightChange();
       _dynamicBindings();
     }
   };
