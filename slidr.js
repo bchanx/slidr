@@ -24,26 +24,30 @@ var Slidr = Slidr || function() {
    * Defaults to showing the first slide added. Specify a slide to begin with using `opt_start`.
    */
   self.init = function(opt_start) {
-    if (!!opt_start && !!_slidr[opt_start]) {
-      _start = opt_start;
-    }
-    if ($('#slidr').length && _start && $(_start).length) {
-      var css = {
-        'position': 'relative',
-        'width': '100%',
-        'display': 'table',
-      };
-      var boxSizing = _slidrCSS.resolve('box-sizing');
-      if (!!boxSizing) {
-        css[boxSizing] = 'border-box';
+    if (!_initialized && $('#slidr').length) {
+      if (!_start && !!opt_start) {
+        _start = opt_start;
       }
-      $('#slidr').css(css);
-      _current = _start;
-      // Hide/show to force a redraw.
-      $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
-      _watchHeightChange();
-      _dynamicBindings();
+      if (_start && $(_start).length && !!_slidr[_start]) {
+        var css = {
+          'position': 'relative',
+          'width': '100%',
+          'display': 'table',
+        };
+        var boxSizing = _slidrCSS.resolve('box-sizing');
+        if (!!boxSizing) {
+          css[boxSizing] = 'border-box';
+        }
+        $('#slidr').css(css);
+        _current = _start;
+        // Hide/show to force a redraw.
+        $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
+        _watchHeightChange();
+        _dynamicBindings();
+        _initialized = true;
+      }
     }
+    return self;
   };
 
   /**
@@ -133,6 +137,11 @@ var Slidr = Slidr || function() {
    * A {mapping} of slides and their transition effects.
    */
   var _transitions = {};
+
+  /**
+   * Whether we've successfully initialized.
+   */
+  var _initialized = false;
 
   /**
    * The slide to start at.
@@ -455,7 +464,7 @@ var Slidr = Slidr || function() {
    */
   function _slide(dir) {
     var next = _lookup(_slidr, [_current, dir]);
-    if (_current && next) {
+    if (!!_current && !!next) {
       $(_current).stop();
       var overflow = (_hasOverflow(_current, dir)) ? 'hidden' : 'auto';
       $('#slidr').css('overflow', overflow);
@@ -575,7 +584,7 @@ var Slidr = Slidr || function() {
       _slidr[current]['left'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['left'];
       _slidr[current]['right'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['right'];
     }
-    return true;
+    return (!_initialized) ? self.init() : true;
   }
 
   /**
@@ -599,7 +608,7 @@ var Slidr = Slidr || function() {
       _slidr[current]['up'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['up'];
       _slidr[current]['down'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['down'];
     }
-    return true;
+    return (!_initialized) ? self.init() : true;
   }
 
   /**
