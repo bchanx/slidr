@@ -559,7 +559,9 @@ var Slidr = Slidr || function() {
    */
   function _addHorizontal(slides, opt_transition, opt_warn) {
     if (!_validateAdd(slides, 'horizontal', opt_transition) && !!opt_warn) {
-      console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
+      if (!!console && !!console.log) {
+        console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
+      }
       return false;
     }
     var current;
@@ -581,7 +583,9 @@ var Slidr = Slidr || function() {
    */
   function _addVertical(slides, opt_transition, opt_warn) {
     if (!_validateAdd(slides, 'vertical', opt_transition) && !!opt_warn) {
-      console.log('[Slidr] vertical add error, conflicts with existing mapping.');
+      if (!!console && !!console.log) {
+        console.log('[Slidr] vertical add error, conflicts with existing mapping.');
+      }
       return false;
     }
     var current;
