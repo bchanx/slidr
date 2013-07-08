@@ -8,10 +8,6 @@
  * slidr - A simple Javascript library for adding slide effects. Currently under development.
  */
 
-var SlidrException = SlidrException || function(message) {
-  this.message = message;
-};
-
 var Slidr = Slidr || function() {
   /**
    * Who am I?
@@ -83,12 +79,12 @@ var Slidr = Slidr || function() {
    * `slides` - expects an object with a `horizontal` and/or a `vertical` field, which contains [lists] of DOM elements
    * we wish to transform into slides.
    *
-   * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use a
+   * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use the
    * default transition if nothing is given.
    *
-   * `opt_warn` - by default, Slidr does a best-effort to compile the slides according to the given specifications.
-   * We silently abort adding the rest of a row if we end up redefining the same transition to two different slides.
-   * Use this flag if you want it to throw an exception instead (useful during development).
+   * `opt_warn` - by default, Slidr does a best-effort in compiling the slides and applying the correct transitions.
+   * It will silently ignores any conflicts/redefinitions and overwrite a slide's old neighbor/transition mapping.
+   * Use this flag if you want Slidr to instead abort the operation and log the error to console.
    *
    * e.g. `slides`:
    * { 
@@ -147,6 +143,11 @@ var Slidr = Slidr || function() {
    * The current slide.
    */
   var _current = null;
+
+  /**
+   * The default transition.
+   */
+  var _defaultTransition = 'cube';
 
   /**
    * Helper for generating browser compatible CSS.
@@ -407,8 +408,8 @@ var Slidr = Slidr || function() {
   /**
    * Set the `transition` for an `element` going in the `dir` movement.
    */
-  function _setTransition(element, transition, dir) {
-    transition = (!transition || self.transitions.indexOf(transition) < 0) ? 'cube' : transition;
+  function _setTransition(element, dir, transition) {
+    transition = (!transition || self.transitions.indexOf(transition) < 0) ? _defaultTransition : transition;
     if (!_transitions[element]) {
       _transitions[element] = {};
     }
@@ -443,13 +444,20 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Check if a Slidr transition will have overflow issues.
+   */
+  function _hasOverflow(element, dir) {
+    return ((dir === 'left' || dir === 'right') && _getTransition(element, dir) === 'linear')
+  }
+
+  /**
    * Transition to the next slide in the `dir` direction.
    */
   function _slide(dir) {
     var next = _lookup(_slidr, [_current, dir]);
     if (_current && next) {
       $(_current).stop();
-      var overflow = (dir === 'left' || dir === 'right') ? 'hidden' : 'auto';
+      var overflow = (_hasOverflow(_current, dir)) ? 'hidden' : 'auto';
       $('#slidr').css('overflow', overflow);
       _transitionOut(_current, dir);
       _current = next;
@@ -512,42 +520,58 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Validate the slides we're trying to add isn't going to conflict with existing mapping.
+   */
+  function _validateAdd(slides, dir, opt_transition) {
+    if (!_isArray(slides) || !dir) {
+      return false;
+    }
+    var prev = (dir === 'horizontal') ? 'left' : 'up';
+    var next = (dir === 'horizontal') ? 'right' : 'down';
+    var current;
+    // For each slide we're trying to add, check it against our known mapping.
+    for (var i = 0; current = slides[i]; i++) {
+      if (!current || !$(current).length) {
+        return false;
+      }
+      if (_slidr[current]) {
+        var newPrev = slides[i-1] || null;
+        var newNext = slides[i+1] || null;
+        var existingPrev = _slidr[current][prev];
+        var existingNext = _slidr[current][next];
+        var previousPrev = _lookup(_slidr, [newNext, prev]);
+        // Are we about to override an existing mapping?
+        if ((existingNext && newNext && existingNext != newNext)
+          || (existingPrev && newPrev && existingPrev != newPrev)
+          || (previousPrev && previousPrev != current)
+          || (!!_lookup(_transitions, [current, dir])
+            && _lookup(_transitions, [current, dir]) != (opt_transition || _defaultTransition))
+        ) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
    * Adds a [list] of slides we want to navigate in the left/right direction.
    */
   function _addHorizontal(slides, opt_transition, opt_warn) {
+    if (!_validateAdd(slides, 'horizontal', opt_transition) && !!opt_warn) {
+      console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
+      return false;
+    }
     var current;
     // For each slide, add it to our mapping.
     for (var i = 0; current = slides[i]; i++) {
-      var newLeft = slides[i-1] || null;
-      var newRight = slides[i+1] || null;
-      if (_slidr[current]) {
-        var existingLeft = _slidr[current].left;
-        var existingRight = _slidr[current].right;
-        var previousLeft = _lookup(_slidr, [newRight, 'left']);
-        // Are we about to override an existing mapping?
-        if ((existingRight && newRight && existingRight != newRight)
-          || (existingLeft && newLeft && existingLeft != newLeft)
-          || (previousLeft && previousLeft != current)
-        ) {
-          if (opt_warn) {
-            throw new SlidrException("[Slidr] Horizontal add error.");
-          }
-          return false;
-        }
-      } else {
+      if (!_isObject(_slidr[current])) {
         _slidr[current] = {};
       }
-      if (_cssInit(current, _setTransition(current, opt_transition, 'horizontal'))) {
-        if (!_start) {
-          _start = current;
-        }
-        if (newLeft) {
-          _slidr[current].left = newLeft;
-        }
-        if (newRight) {
-          _slidr[current].right = newRight;
-        }
-      }
+      _cssInit(current, _setTransition(current, 'horizontal', opt_transition));
+      _start = (!_start) ? current : _start;
+      _slidr[current]['left'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['left'];
+      _slidr[current]['right'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['right'];
     }
     return true;
   }
@@ -556,47 +580,23 @@ var Slidr = Slidr || function() {
    * Adds a [list] of slides that we want to navigate in the up/down direction.
    */
   function _addVertical(slides, opt_transition, opt_warn) {
+    if (!_validateAdd(slides, 'vertical', opt_transition) && !!opt_warn) {
+      console.log('[Slidr] vertical add error, conflicts with existing mapping.');
+      return false;
+    }
     var current;
-    // For each slide, add it to our slidr mapping.
+    // For each slide, add it to our mapping.
     for (var i = 0; current = slides[i]; i++) {
-      var newUp = slides[i-1] || null;
-      var newDown = slides[i+1] || null;
-      if (_slidr[current]) {
-        var existingUp = _slidr[current].up;
-        var existingDown = _slidr[current].down;
-        var previousUp = _lookup(_slidr, [newDown, 'up']);
-        // Are we about to override an existing mapping?
-        if ((existingUp && newUp && existingUp != newUp)
-          || (existingDown && newDown && existingDeft != newDown)
-          || (previousUp && previousUp != current)
-        ) {
-          if (opt_warn) {
-            throw new SlidrException("[Slidr] Vertical add error.");
-          }
-          return false;
-        }
-      } else {
+      if (!_isObject(_slidr[current])) {
         _slidr[current] = {};
       }
-      if (_cssInit(current, _setTransition(current, opt_transition, 'vertical'))) {
-        if (!_start) {
-          _start = current;
-        }
-        if (newUp) {       
-          _slidr[current].up = newUp;
-        }
-        if (newDown) {
-          _slidr[current].down = newDown;
-        }
-      }
+      _cssInit(current, _setTransition(current, 'vertical', opt_transition));
+      _start = (!_start) ? current : _start;
+      _slidr[current]['up'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['up'];
+      _slidr[current]['down'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['down'];
     }
     return true;
   }
-
-  // TODO: remove me!
-  self.SlidrCSSHelper = function() {
-    return new SlidrCSS();
-  };
 
   /**
    * Helper for creating Slidr CSS.
