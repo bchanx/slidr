@@ -82,9 +82,9 @@ var Slidr = Slidr || function() {
    * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use the
    * default transition if nothing is given.
    *
-   * `opt_warn` - by default, Slidr does a best-effort in compiling the slides and applying the correct transitions.
-   * It will silently ignores any conflicts/redefinitions and overwrite a slide's old neighbor/transition mapping.
-   * Use this flag if you want Slidr to instead abort the operation and log the error to console.
+   * `opt_overwrite` - Slidr does a best-effort in compiling the slides and applying the correct transitions.
+   * By default, it aborts adding a set of slides if it conflicts with the existing mapping (i.e redefining transition).
+   * Use this flag if you want Slidr to ignore the conflicts and instead overwrite and continue with the operation.
    *
    * e.g. `slides`:
    * { 
@@ -97,15 +97,15 @@ var Slidr = Slidr || function() {
    *   ]
    * }
    */
-  self.add = function(slides, opt_transition, opt_warn) {
+  self.add = function(slides, opt_transition, opt_overwrite) {
     if (slides.horizontal) {
       for (var i = 0; i < slides.horizontal.length; i++) {
-        _addHorizontal(slides.horizontal[i], opt_transition, opt_warn);
+        _addHorizontal(slides.horizontal[i], opt_transition, opt_overwrite);
       }
     }
     if (slides.vertical) {
       for (var i = 0; i < slides.vertical.length; i++) {
-        _addVertical(slides.vertical[i], opt_transition, opt_warn);
+        _addVertical(slides.vertical[i], opt_transition, opt_overwrite);
       }
     }
   };
@@ -113,15 +113,15 @@ var Slidr = Slidr || function() {
   /**
    * Convenience helper for adding a set of horizontal slides.
    */
-  self.addHorizontal = function(slides, opt_transition, opt_warn) {
-    _addHorizontal(slides, opt_transition, opt_warn);
+  self.addHorizontal = function(slides, opt_transition, opt_overwrite) {
+    _addHorizontal(slides, opt_transition, opt_overwrite);
   };
 
   /**
    * Convenience helper for adding a set of vertical slides.
    */
-  self.addVertical = function(slides, opt_transition, opt_warn) {
-    _addVertical(slides, opt_transition, opt_warn);
+  self.addVertical = function(slides, opt_transition, opt_overwrite) {
+    _addVertical(slides, opt_transition, opt_overwrite);
   };
 
   /**
@@ -557,8 +557,8 @@ var Slidr = Slidr || function() {
   /**
    * Adds a [list] of slides we want to navigate in the left/right direction.
    */
-  function _addHorizontal(slides, opt_transition, opt_warn) {
-    if (!_validateAdd(slides, 'horizontal', opt_transition) && !!opt_warn) {
+  function _addHorizontal(slides, opt_transition, opt_overwrite) {
+    if (!_validateAdd(slides, 'horizontal', opt_transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
       }
@@ -581,8 +581,8 @@ var Slidr = Slidr || function() {
   /**
    * Adds a [list] of slides that we want to navigate in the up/down direction.
    */
-  function _addVertical(slides, opt_transition, opt_warn) {
-    if (!_validateAdd(slides, 'vertical', opt_transition) && !!opt_warn) {
+  function _addVertical(slides, opt_transition, opt_overwrite) {
+    if (!_validateAdd(slides, 'vertical', opt_transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] vertical add error, conflicts with existing mapping.');
       }
