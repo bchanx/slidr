@@ -29,20 +29,12 @@ var Slidr = Slidr || function() {
         _start = opt_start;
       }
       if (_start && $(_start).length && !!_slidr[_start]) {
-        var css = {
-          'position': 'relative',
-          'width': '100%',
-          'display': 'table',
-        };
-        var boxSizing = _slidrCSS.resolve('box-sizing');
-        if (!!boxSizing) {
-          css[boxSizing] = 'border-box';
-        }
-        $('#slidr').css(css);
+        var display = document.getElementById('slidr').style.display || 'table';
+        $('#slidr').css({'position': 'relative', 'display': 'display'});
         _current = _start;
         // Hide/show to force a redraw.
         $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
-        _watchHeightChange();
+        _autoResize();
         _dynamicBindings();
         _initialized = true;
       }
@@ -464,18 +456,35 @@ var Slidr = Slidr || function() {
   /**
    * Watch for height changes in the slides, propagate the change to the slidr container.
    */
-  function _watchHeightChange() {
+  function _autoResize() {
     var height = null;
-    var timerId = setInterval((function watchHeight() {
+    var width = null;
+    var isDynamicHeight = document.getElementById('slidr').style.height === '';
+    var isDynamicWidth = document.getElementById('slidr').style.width === '';
+    var timerId = setInterval((function watchDimensions() {
       if (!$('#slidr').length) {
         clearInterval(timerId);
         return;
       } else if ($('#slidr').css('visibility') === 'hidden') {
         height = _setHeight(0);
-      } else if (_current && $(_current).length && height != $(_current).height()) {
-        height = _setHeight($(_current).height());
+        width = _setWidth(0);
+      } else if (_current && $(_current).length) {
+        var newHeight = $(_current).height();
+        if (isDynamicHeight && height != newHeight) {
+          height = _setHeight(newHeight);
+        }
+        var parentWidth = $('#slidr').parent().width();
+        var newWidth = $(_current).width();
+        var ignorePadding = false;
+        if (parentWidth > newWidth) {
+          newWidth = parentWidth;
+          ignorePadding = true;
+        }
+        if (isDynamicWidth && width != newWidth) {
+          width = _setWidth(newWidth, ignorePadding);
+        }
       }
-      return watchHeight;
+      return watchDimensions;
     })(), 250);
   }
 
@@ -488,6 +497,18 @@ var Slidr = Slidr || function() {
         parseInt($('#slidr').css('padding-bottom').slice(0, -2));
       $('#slidr').css('height', height + padding + 'px');
       return height;
+    }
+    return null;
+  }
+
+  function _setWidth(width, ignorePadding) {
+    if ($('#slidr').length) {
+      var padding = (!!ignorePadding) ? 0 : parseInt($('#slidr').css('padding-left').slice(0, -2)) +
+        parseInt($('#slidr').css('padding-right').slice(0, -2));
+      var margin = parseInt($('#slidr').css('margin-left').slice(0, -2)) +
+        parseInt($('#slidr').css('margin-right').slice(0, -2));
+      $('#slidr').css('width', width + padding - margin + 'px');
+      return width;
     }
     return null;
   }
@@ -751,10 +772,4 @@ var Slidr = Slidr || function() {
     }
   };
 };
-
-$(function() {
-  if ($('#slidr').length) {
-    $('#slidr').css('display', 'none');
-  }
-});
 
