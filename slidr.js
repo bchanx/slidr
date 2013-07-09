@@ -29,8 +29,7 @@ var Slidr = Slidr || function() {
         _start = opt_start;
       }
       if (_start && $(_start).length && !!_slidr[_start]) {
-        var display = document.getElementById('slidr').style.display || 'table';
-        $('#slidr').css({'position': 'relative', 'display': 'display'});
+        $('#slidr').css({'position': 'relative', 'display': document.getElementById('slidr').style.display || 'table'});
         _current = _start;
         // Hide/show to force a redraw.
         $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
