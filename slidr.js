@@ -235,19 +235,19 @@ var Slidr = Slidr || function() {
       'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
       'in': {
         'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-left', {
-          '0': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
-        },
-        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-right', {
           '0': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
           '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
         },
+        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-right', {
+          '0': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
+        },
         'up': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-up', {
-          '0': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
+          '0': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
           '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
         },
         'down': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-down', {
-          '0': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
+          '0': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
           '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
         },
       },
@@ -275,19 +275,19 @@ var Slidr = Slidr || function() {
       'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
       'in': {
         'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-left', {
-          '0': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
-        },
-        'right': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-right', {
           '0': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' },
           '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
         },
+        'right': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-right', {
+          '0': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' },
+          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
+        },
         'up': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-up', {
-          '0': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' },
+          '0': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' },
           '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
         },
         'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-down', {
-          '0': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' },
+          '0': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' },
           '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
         },
       },
@@ -306,7 +306,7 @@ var Slidr = Slidr || function() {
         },
         'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-out-down', {
           '0': { 'transform': 'translateY(0px)', 'opacity': '1' },
-          '100': { 'transform': 'translateY(-' + height + ')', 'opacity': '0' }})
+          '100': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' }})
         },
       }
     }
@@ -352,33 +352,25 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Helper for applying CSS transform rules.
-   */
-  function _cssTransform(rules) {
-    return {
-      '-webkit-transform': rules,
-      '-moz-transform': rules,
-      '-o-transform': rules,
-      'transform': rules,
-    }
-  }
-
-  /**
    * CSS rules to apply to all slides in our Slidr when we initialize.
    */
   function _cssInit(element, transition) {
     var css = _lookup(_css, [transition, 'init']) || {};
-    if (element && $(element).length && css) {
-      var display = $(element).css('display');
-      var extra = {
-        'display': (display === 'none') ? 'block' : display,
-        'opacity': '0',
-        'position': 'absolute',
-        'left': '50%',
-        'margin-left': '-' + $(element).width()/2 + 'px',
-        'pointer-events': 'none'
-      };
-      $(element).css(_extend(extra, css));
+    if (element && $(element).length) {
+      if (!_slidr[element]['initialized']) {
+        var display = $(element).css('display');
+        var extra = {
+          'display': (display === 'none') ? 'block' : display,
+          'opacity': '0',
+          'position': 'absolute',
+          'left': '50%',
+          'margin-left': '-' + $(element).width()/2 + 'px',
+          'pointer-events': 'none'
+        };
+        _extend(extra, css);
+        _slidr[element]['initialized'] = true;
+      }
+      $(element).css(css);
       return true;
     }
     return false;
@@ -410,8 +402,7 @@ var Slidr = Slidr || function() {
    * Get the next transition for `element` entering/leaving the viewport from `dir` direction.
    */
   function _getTransition(element, dir) {
-    var direction = (dir === 'up' || dir === 'down') ? 'vertical' : 'horizontal';
-    return _lookup(_transitions, [element, direction]);
+    return _lookup(_transitions, [element, dir]);
   }
 
   /**
@@ -427,36 +418,31 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Applies the out transition to an `element` being displaced by a slide coming from the `dir` direction.
+   * Apply a transition to an `element`, coming [in|out] of the Slidr as `type`, in the `dir` direction.
    */
-  function _transitionOut(element, dir) {
-    if (element && $(element).length && dir) {
+  function _applyTransition(element, type, dir) {
+    if (element && $(element).length && type && dir) {
       var transition = _getTransition(element, dir);
       if (transition) {
-        return _cssAnimate(element, transition, 'out', dir);
+        return _cssAnimate(element, transition, type, dir);
       }
     }
     return false;
   }
 
   /**
-   * Applies the in transition to an `element` entering the Slidr viewport, from the `dir` direction.
+   * Returns the opposite direction.
    */
-  function _transitionIn(element, dir) {
-    if (element && $(element).length && dir) {
-      var transition = _getTransition(element, dir);
-      if (transition) {
-        return _cssAnimate(element, transition, 'in', dir);
-      }
-    }
-    return false;
+  function _opposite(dir) {
+    return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left';
   }
 
   /**
    * Check if a Slidr transition will have overflow issues.
    */
-  function _hasOverflow(element, dir) {
-    return ((dir === 'left' || dir === 'right') && _getTransition(element, dir) === 'linear')
+  function _hasOverflow(current, next, dir) {
+    return ((dir === 'left' || dir === 'right')
+            && (_getTransition(current, dir) === 'linear' || _getTransition(next, _opposite(dir)) === 'linear'))
   }
 
   /**
@@ -466,11 +452,10 @@ var Slidr = Slidr || function() {
     var next = _lookup(_slidr, [_current, dir]);
     if (!!_current && !!next) {
       $(_current).stop();
-      var overflow = (_hasOverflow(_current, dir)) ? 'hidden' : 'auto';
-      $('#slidr').css('overflow', overflow);
-      _transitionOut(_current, dir);
+      $('#slidr').css('overflow', (_hasOverflow(_current, next, dir)) ? 'hidden' : 'auto');
+      _applyTransition(_current, 'out', dir);
       _current = next;
-      _transitionIn(_current, dir);
+      _applyTransition(next, 'in', _opposite(dir));
       return true;
     }
     return false;
@@ -531,7 +516,7 @@ var Slidr = Slidr || function() {
   /**
    * Validate the slides we're trying to add isn't going to conflict with existing mapping.
    */
-  function _validateAdd(slides, dir, opt_transition) {
+  function _validateAdd(slides, dir, transition) {
     if (!_isArray(slides) || !dir) {
       return false;
     }
@@ -546,15 +531,17 @@ var Slidr = Slidr || function() {
       if (_slidr[current]) {
         var newPrev = slides[i-1] || null;
         var newNext = slides[i+1] || null;
-        var existingPrev = _slidr[current][prev];
-        var existingNext = _slidr[current][next];
+        var existingPrev = _slidr[current][prev] || null;
+        var existingNext = _slidr[current][next] || null;
+        var existingPrevTransition = _lookup(_transitions, [current, prev]);
+        var existingNextTransition = _lookup(_transitions, [current, next]);
         var previousPrev = _lookup(_slidr, [newNext, prev]);
         // Are we about to override an existing mapping?
         if ((existingNext && newNext && existingNext != newNext)
           || (existingPrev && newPrev && existingPrev != newPrev)
           || (previousPrev && previousPrev != current)
-          || (!!_lookup(_transitions, [current, dir])
-            && _lookup(_transitions, [current, dir]) != (opt_transition || _defaultTransition))
+          || (newPrev && existingPrevTransition && existingPrevTransition != transition)
+          || (newNext && existingNextTransition && existingNextTransition != transition)
         ) {
           return false;
         }
@@ -567,7 +554,8 @@ var Slidr = Slidr || function() {
    * Adds a [list] of slides we want to navigate in the left/right direction.
    */
   function _addHorizontal(slides, opt_transition, opt_overwrite) {
-    if (!_validateAdd(slides, 'horizontal', opt_transition) && !opt_overwrite) {
+    var transition = opt_transition || _defaultTransition;
+    if (!_validateAdd(slides, 'horizontal', transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
       }
@@ -579,10 +567,16 @@ var Slidr = Slidr || function() {
       if (!_isObject(_slidr[current])) {
         _slidr[current] = {};
       }
-      _cssInit(current, _setTransition(current, 'horizontal', opt_transition));
+      if (!!slides[i-1]) {
+        _slidr[current]['left'] = slides[i-1];
+        _setTransition(current, 'left', transition);
+      }
+      if (!!slides[i+1]) {
+        _slidr[current]['right'] = slides[i+1];
+        _setTransition(current, 'right', transition);
+      }
+      _cssInit(current, transition);
       _start = (!_start) ? current : _start;
-      _slidr[current]['left'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['left'];
-      _slidr[current]['right'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['right'];
     }
     return (!_initialized) ? self.init() : true;
   }
@@ -591,7 +585,8 @@ var Slidr = Slidr || function() {
    * Adds a [list] of slides that we want to navigate in the up/down direction.
    */
   function _addVertical(slides, opt_transition, opt_overwrite) {
-    if (!_validateAdd(slides, 'vertical', opt_transition) && !opt_overwrite) {
+    var transition = opt_transition || _defaultTransition;
+    if (!_validateAdd(slides, 'vertical', transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] vertical add error, conflicts with existing mapping.');
       }
@@ -603,10 +598,16 @@ var Slidr = Slidr || function() {
       if (!_isObject(_slidr[current])) {
         _slidr[current] = {};
       }
-      _cssInit(current, _setTransition(current, 'vertical', opt_transition));
+      if (!!slides[i-1]) {
+        _slidr[current]['up'] = slides[i-1];
+        _setTransition(current, 'up', transition);
+      }
+      if (!!slides[i+1]) {
+        _slidr[current]['down'] = slides[i+1];
+        _setTransition(current, 'down', transition);
+      }
+      _cssInit(current, transition);
       _start = (!_start) ? current : _start;
-      _slidr[current]['up'] = (slides[i-1]) ? slides[i-1] : _slidr[current]['up'];
-      _slidr[current]['down'] = (slides[i+1]) ? slides[i+1] : _slidr[current]['down'];
     }
     return (!_initialized) ? self.init() : true;
   }
