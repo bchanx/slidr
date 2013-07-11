@@ -17,7 +17,7 @@ var Slidr = Slidr || function() {
   /**
    * [List] of available slide transitions.
    */
-  self.transitions = ['cube', 'linear', 'none'];
+  self.transitions = ['cube', 'fade', 'linear', 'none'];
 
   /**
    * Start the Slidr!
@@ -146,6 +146,13 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Check if object is a {Function}.
+   */
+  function _isFunction(obj) {
+    return (!!obj) && (typeof obj === 'function');
+  }
+
+  /**
    * Traverse [keys] in {object} to lookup a value, or null if nothing found.
    */
   function _lookup(obj, keys) {
@@ -191,13 +198,16 @@ var Slidr = Slidr || function() {
     'cube': function(animation, rotateStart, rotateEnd, translateZ, opacityStart, opacityEnd) {
       _slidrCSS.createKeyframe(animation, {
         '0': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
-        '100': { 'transform': 'rotate' + rotateEnd + ' translateZ(' + translateZ + 'px)', 'opacity': opacityEnd },
+        '100': { 'transform': 'rotate' + rotateEnd + ' translateZ(' + translateZ + 'px)', 'opacity': opacityEnd }
       });
+    },
+    'fade': function(animation, opacityStart, opacityEnd) {
+      _slidrCSS.createKeyframe(animation, { '0': { 'opacity': opacityStart }, '100': { 'opacity': opacityEnd } });
     },
     'linear': function(animation, translateStart, translateEnd, opacityStart, opacityEnd) {
       _slidrCSS.createKeyframe(animation, {
         '0': { 'transform': 'translate' + translateStart, 'opacity': opacityStart },
-        '100': { 'transform': 'translate' + translateEnd, 'opacity': opacityEnd },
+        '100': { 'transform': 'translate' + translateEnd, 'opacity': opacityEnd }
       });
     },
   };
@@ -208,8 +218,11 @@ var Slidr = Slidr || function() {
   var _css = {
     'cube': {
       'supported': _slidrCSS.supports(['animation', 'backface-visibility', 'transform-style', 'transform', 'opacity']),
-      'init': function() { return _slidrCSS.fixup({ 'backface-visibility': 'hidden',
-        'transform-style': 'preserve-3d' });
+      'init': function() { 
+        return _slidrCSS.fixup({
+          'backface-visibility': 'hidden',
+          'transform-style': 'preserve-3d'
+        });
       },
       'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
       'in': {
@@ -224,6 +237,15 @@ var Slidr = Slidr || function() {
         'up': function(h) { _cssHelper['cube']('slidr-cube-out-up', 'X(0deg)', 'X(-90deg)', h/2, '1', '0'); },
         'down': function(h) { _cssHelper['cube']('slidr-cube-out-down', 'X(0deg)', 'X(90deg)', h/2, '1', '0'); },
       }
+    },
+    'fade': {
+      'supported': _slidrCSS.supports(['animation', 'opacity']),
+      'init': function() {
+        _cssHelper['fade']('slidr-fade-in', '0', '1');
+        _cssHelper['fade']('slidr-fade-out', '1', '0');
+        return null; 
+      },
+      'timing': function(animation) { return animation + ' 0.4s ease-out 0s'; },
     },
     'linear': {
       'supported': _slidrCSS.supports(['transform', 'opacity']),
@@ -276,6 +298,17 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Resolve keyframe animation name.
+   */
+  function _cssAnimationName(transition, type, dir) {
+    var parts = ['slidr', transition, type];
+    if (transition !== 'fade') {
+      parts.push(dir);
+    }
+    return parts.join('-');
+  }
+
+  /**
    * Animate the `element` coming [in|out] as `type`, from the `dir` direction with `transition` effects.
    */
   function _cssAnimate(element, transition, type, dir) {
@@ -287,10 +320,13 @@ var Slidr = Slidr || function() {
       };
       if (transition && dir && _lookup(_css, [transition, 'supported'])) {
         var animation = _slidrCSS.resolve('animation');
-        var timing = _lookup(_css, [transition, 'timing'])(['slidr', transition, type, dir].join('-'));
-        if (!!animation && !!timing) {
+        var timing = _lookup(_css, [transition, 'timing']);
+        if (animation && _isFunction(timing)) {
           var keyframe = _lookup(_css, [transition, type, dir]);
-          (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+          if (_isFunction(keyframe)) {
+            (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+          }
+          timing = timing(_cssAnimationName(transition, type, dir));
           css[animation] = timing;
         }
       }
