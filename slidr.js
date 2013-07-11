@@ -17,7 +17,7 @@ var Slidr = Slidr || function() {
   /**
    * [List] of available slide transitions.
    */
-  self.transitions = ['cube', 'linear'];
+  self.transitions = ['cube', 'linear', 'none'];
 
   /**
    * Start the Slidr!
@@ -32,7 +32,7 @@ var Slidr = Slidr || function() {
         $('#slidr').css({'position': 'relative', 'display': document.getElementById('slidr').style.display || 'table'});
         _current = _start;
         // Hide/show to force a redraw.
-        $(_current).hide().css({'pointer-events': 'auto', 'opacity': '1'}).fadeIn(500);
+        $(_current).hide().css({'opacity': '1', 'z-index': '1', 'pointer-events': 'auto'}).fadeIn(500);
         _autoResize();
         _dynamicBindings();
         _initialized = true;
@@ -117,7 +117,7 @@ var Slidr = Slidr || function() {
   /**
    * The default transition.
    */
-  var _defaultTransition = 'cube';
+  var _defaultTransition = 'none';
 
   /**
    * Helper for generating browser compatible CSS.
@@ -271,6 +271,11 @@ var Slidr = Slidr || function() {
           '100': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' }})
         },
       }
+    },
+    'none': {
+      'supported': true,
+      'init': function() { return null; },
+      'timing': function() { return null; },
     }
   };
 
@@ -284,10 +289,11 @@ var Slidr = Slidr || function() {
         var display = $(element).css('display');
         var extra = {
           'display': (display === 'none') ? 'block' : display,
-          'opacity': '0',
           'position': 'absolute',
           'left': '50%',
           'margin-left': '-' + $(element).width()/2 + 'px',
+          'opacity': '0',
+          'z-index': '0',
           'pointer-events': 'none'
         };
         _extend(extra, css);
@@ -303,20 +309,23 @@ var Slidr = Slidr || function() {
    * Animate the `element` coming [in|out] as `type`, from the `dir` direction with `transition` effects.
    */
   function _cssAnimate(element, transition, type, dir) {
-    if (element && $(element).length) {
-      var animation = _slidrCSS.resolve('animation');
-      if (!!animation) {
+    if (element && $(element).length && type) {
+      var css = {
+        'opacity': (type === 'in') ? '1': '0',
+        'z-index': (type === 'in') ? '1': '0',
+        'pointer-events': (type === 'in') ? 'auto': 'none'
+      };
+      if (transition && dir && _lookup(_css, [transition, 'supported'])) {
+        var animation = _slidrCSS.resolve('animation');
         var timing = _lookup(_css, [transition, 'timing'])(['slidr', transition, type, dir].join('-'));
-        var keyframe = _lookup(_css, [transition, type, dir]);
-        (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
-        var css = {
-          'opacity': (type === 'in') ? '1': '0',
-          'pointer-events': (type === 'in') ? 'auto': 'none'
-        };
-        css[animation] = timing;
-        $(element).css(css);
-        return true;
+        if (!!animation && !!timing) {
+          var keyframe = _lookup(_css, [transition, type, dir]);
+          (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+          css[animation] = timing;
+        }
       }
+      $(element).css(css);
+      return true;
     }
     return false;
   }
@@ -332,7 +341,9 @@ var Slidr = Slidr || function() {
    * Set the `transition` for an `element` going in the `dir` movement.
    */
   function _setTransition(element, dir, transition) {
-    transition = (!transition || self.transitions.indexOf(transition) < 0) ? _defaultTransition : transition;
+    transition = (!transition
+      || self.transitions.indexOf(transition) < 0
+      || !_lookup(_css, [transition, 'supported'])) ? _defaultTransition : transition;
     if (!_transitions[element]) {
       _transitions[element] = {};
     }
