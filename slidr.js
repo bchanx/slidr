@@ -70,50 +70,20 @@ var Slidr = Slidr || function() {
   };
 
   /**
-   * Adds a set of slides to our Slidr.
-   * `slides` - expects an object with a `horizontal` and/or a `vertical` field, which contains [lists] of DOM elements
-   * we wish to transform into slides.
-   *
-   * `opt_transition` - defines what transition to use for navigating the given set of slides. Slidr will use the
-   * default transition if nothing is given.
-   *
-   * `opt_overwrite` - Slidr does a best-effort in compiling the slides and applying the correct transitions.
-   * By default, it aborts adding a set of slides if it conflicts with the existing mapping (i.e redefining transition).
-   * Use this flag if you want Slidr to ignore the conflicts and instead overwrite and continue with the operation.
-   *
-   * e.g. `slides`:
-   * { 
-   *   'horizontal': [
-   *     ['#one', '#two', '#three', '#four'],
-   *   ],
-   *   'vertical': [
-   *     ['#five', '#two', '#six'],
-   *     ['#seven', '#four', '#eight'],
-   *   ]
-   * }
-   */
-  self.add = function(slides, opt_transition, opt_overwrite) {
-    if (slides.horizontal) {
-      for (var i = 0; i < slides.horizontal.length; i++) {
-        _addHorizontal(slides.horizontal[i], opt_transition, opt_overwrite);
-      }
-    }
-    if (slides.vertical) {
-      for (var i = 0; i < slides.vertical.length; i++) {
-        _addVertical(slides.vertical[i], opt_transition, opt_overwrite);
-      }
-    }
-  };
-  
-  /**
-   * Convenience helper for adding a set of horizontal slides.
+   * Adds a set of horizontal slides.
+   * @param {Array} slides A list of elements id's to add to Slidr. Elements must be direct children of the Slidr.
+   * @param {String?} opt_transition The transition to apply between the slides, defaults to none.
+   * @param {Boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
    */
   self.addHorizontal = function(slides, opt_transition, opt_overwrite) {
     _addHorizontal(slides, opt_transition, opt_overwrite);
   };
 
   /**
-   * Convenience helper for adding a set of vertical slides.
+   * Adds a set of vertical slides.
+   * @param {Array} slides A list of elements id's to add to Slidr. Elements must be direct children of the Slidr.
+   * @param {String?} opt_transition The transition to apply between the slides, defaults to none.
+   * @param {Boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
    */
   self.addVertical = function(slides, opt_transition, opt_overwrite) {
     _addVertical(slides, opt_transition, opt_overwrite);
@@ -219,11 +189,11 @@ var Slidr = Slidr || function() {
    */
   var _css = {
     'cube': {
-      'init': _extend([
-        _cssPrefixer('backface-visibility', 'hidden', ['webkit', 'moz']),
-        _cssPrefixer('transform-style', 'preserve-3d', ['webkit', 'moz'])
-      ]),
-      'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
+      'supported': _slidrCSS.supports(['animation', 'backface-visibility', 'transform-style', 'transform', 'opacity']),
+      'init': function() { return _slidrCSS.fixup({ 'backface-visibility': 'hidden',
+        'transform-style': 'preserve-3d' });
+      },
+      'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
       'in': {
         'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-left', {
           '0': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
@@ -262,8 +232,9 @@ var Slidr = Slidr || function() {
       }
     },
     'linear': {
-      'init': null,
-      'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
+      'supported': _slidrCSS.supports(['transform', 'opacity']),
+      'init': function() { return null; },
+      'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
       'in': {
         'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-left', {
           '0': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' },
@@ -304,50 +275,11 @@ var Slidr = Slidr || function() {
   };
 
   /**
-   * Append css browser prefixes to properties.
-   * @param {string} property CSS property name.
-   * @param {string || Array} values CSS property value(s) to apply.
-   * @param {Array} prefixes [list] of browser prefixes to append.
-   * @return {Object} map of css {property:value}.
-   */
-  function _cssPrefixer(property, values, prefixes) {
-    var css = {};
-    if (!!property && !!values) {
-      values = (_isString(values)) ? values.split(', ') : values;
-      if (_isArray(values)) {
-        css[property] = values.join(', ');
-        if (_isArray(prefixes) && prefixes.length) {
-          var hasTransform = -1;
-          for (var i = 0; i < values.length; i++) {
-            if (values[i].indexOf('transform') == 0) {
-              hasTransform = i;
-              break;
-            }
-          }
-          for (var i = 0; i < prefixes.length; i++) {
-            var prefix = '-' + prefixes[i] + '-';
-            var original = null;
-            if (hasTransform >= 0) {
-              original = values[hasTransform];
-              values[hasTransform] = prefix + original;
-            }
-            css[prefix + property] = values.join(', ');
-            if (hasTransform >= 0 && original) {
-              values[hasTransform] = original;
-            }
-          }
-        }
-      }
-    }
-    return css;
-  }
-
-  /**
-   * CSS rules to apply to all slides in our Slidr when we initialize.
+   * CSS rules to apply to slides in our Slidr on initialize.
    */
   function _cssInit(element, transition) {
-    var css = _lookup(_css, [transition, 'init']) || {};
     if (element && $(element).length) {
+      var css = _lookup(_css, [transition, 'init'])() || {};
       if (!_slidr[element]['initialized']) {
         var display = $(element).css('display');
         var extra = {
@@ -453,7 +385,7 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Watch for height changes in the slides, propagate the change to the slidr container.
+   * Watch for height and width changes in the slides, propagate the change to the slidr container.
    */
   function _autoResize() {
     var height = null;
@@ -488,7 +420,7 @@ var Slidr = Slidr || function() {
   }
 
   /**
-   * Sets the height of our Slidr container in order to fully contain the slides.
+   * Sets the height of our Slidr container.
    */
   function _setHeight(height) {
     if ($('#slidr').length) {
@@ -500,6 +432,9 @@ var Slidr = Slidr || function() {
     return null;
   }
 
+  /**
+   * Sets the width of our Slidr container.
+   */
   function _setWidth(width, ignorePadding) {
     if ($('#slidr').length) {
       var padding = (!!ignorePadding) ? 0 : parseInt($('#slidr').css('padding-left').slice(0, -2)) +
@@ -517,19 +452,14 @@ var Slidr = Slidr || function() {
    */
   function _dynamicBindings() {
     $(document).keydown(function(e) {
-      if (e.which === 40) {
-        // Down arrow
-        self.down();
-      } else if (e.which === 39) {
-        // Right arrow
-        self.right();
-      } else if (e.which === 38) {
-        // Up arrow
-        self.up();
-      } else if (e.which === 37) {
-        // Left arrow
-        self.left();
-      }
+      // Down arrow
+      if (e.which === 40) { self.down(); }
+      // Right arrow
+      else if (e.which === 39) { self.right(); }
+      // Up arrow
+      else if (e.which === 38) { self.up(); }
+      // Left arrow
+      else if (e.which === 37) { self.left(); }
     });
   }
 
@@ -665,6 +595,39 @@ var Slidr = Slidr || function() {
     };
 
     /**
+     * Check whether all given css properties are supported in the browser.
+     */
+    self.supports = function(properties) {
+      if (_isString(properties)) {
+        properties = [properties];
+      }
+      if (_isArray(properties)) {
+        for (var i = 0; i < properties.length; i++) {
+          if (!self.resolve(properties[i])) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    };
+
+    /**
+     * Applies necessary CSS browser prefixes for a set of properties.
+     */
+    self.fixup = function(properties) {
+      var result = {};
+      if (_isObject(properties)) {
+        for (var p in properties) {
+          if (self.resolve(p)) {
+            result[self.resolve(p)] = properties[p];
+          }
+        }
+      }
+      return result;
+    };
+
+    /**
      * Creates a keyframe animation rule.
      */
     self.createKeyframe = function(name, rules) {
@@ -696,18 +659,33 @@ var Slidr = Slidr || function() {
       _addKeyframeRule(name, rule);
     };
 
+    /**
+     * Pointer to the document style sheets.
+     */
     var _style = document.getElementsByTagName('html')[0]['style'];
 
+    /**
+     * Pointer to our Slidr CSS style sheet.
+     */
     var _styleSheet = null;
 
+    /**
+     * The CSS prefix for the displaying browser.
+     */
     var _cssPrefix = null;
 
+    /**
+     * The DOM prefix for the displaying browser.
+     */
     var _domPrefix = null;
 
+    /**
+     * The CSS property to prefix mapping.
+     */
     var _propertyCache = {};
 
     /**
-     * Adds a CSS rule to our custom stylesheet.
+     * Adds a CSS keyframe rule to our custom stylesheet.
      */
     function _addKeyframeRule(name, rule) {
       if (!_styleSheet) {
@@ -731,6 +709,9 @@ var Slidr = Slidr || function() {
       _styleSheet.insertRule(rule, rules.length);
     }
 
+    /**
+     * Given a css property and a optional dom prefix, tranlate it into a DOM document representation.
+     */
     function _normalize(cssProperty, opt_domPrefix) {
       var property = cssProperty;
       if (_isString(property)) {
@@ -749,6 +730,9 @@ var Slidr = Slidr || function() {
       return property;
     }
 
+    /**
+     * Given a css property, retrieves the DOM prefix if applicable.
+     */
     function _getDOMPrefix(cssProperty) {
       if (_domPrefix === null && _isString(cssProperty)) {
         var DOMPrefixes = ['Webkit', 'Moz', 'ms', 'O', 'Khtml'];
@@ -763,6 +747,9 @@ var Slidr = Slidr || function() {
       return _domPrefix;
     }
 
+    /**
+     * Given a css property, retrieves the browser prefix if applicable.
+     */
     function _getCSSPrefix(cssProperty) {
       if (_cssPrefix === null && _isString(cssProperty)) {
         _getDOMPrefix(cssProperty);
