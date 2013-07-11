@@ -185,6 +185,24 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Helper functions for generating css keyframes.
+   */
+  var _cssHelper = {
+    'cube': function(animation, rotateStart, rotateEnd, translateZ, opacityStart, opacityEnd) {
+      _slidrCSS.createKeyframe(animation, {
+        '0': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
+        '100': { 'transform': 'rotate' + rotateEnd + ' translateZ(' + translateZ + 'px)', 'opacity': opacityEnd },
+      });
+    },
+    'linear': function(animation, translateStart, translateEnd, opacityStart, opacityEnd) {
+      _slidrCSS.createKeyframe(animation, {
+        '0': { 'transform': 'translate' + translateStart, 'opacity': opacityStart },
+        '100': { 'transform': 'translate' + translateEnd, 'opacity': opacityEnd },
+      });
+    },
+  };
+
+  /**
    * Defines our available css transitions.
    */
   var _css = {
@@ -195,40 +213,16 @@ var Slidr = Slidr || function() {
       },
       'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
       'in': {
-        'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-left', {
-          '0': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
-        },
-        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-in-right', {
-          '0': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' }})
-        },
-        'up': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-up', {
-          '0': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
-        },
-        'down': function(height) { _slidrCSS.createKeyframe('slidr-cube-in-down', {
-          '0': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' }})
-        },
+        'left': function(w) { _cssHelper['cube']('slidr-cube-in-left', 'Y(90deg)', 'Y(0deg)', w/2, '0', '1'); },
+        'right': function(w) { _cssHelper['cube']('slidr-cube-in-right', 'Y(-90deg)', 'Y(0deg)', w/2, '0', '1'); },
+        'up': function(h) { _cssHelper['cube']('slidr-cube-in-up', 'X(-90deg)', 'X(0deg)', h/2, '0', '1'); },
+        'down': function(h) { _cssHelper['cube']('slidr-cube-in-down', 'X(90deg)', 'X(0deg)', h/2, '0', '1'); },
       },
       'out': {
-        'left': function(width) { _slidrCSS.createKeyframe('slidr-cube-out-left', {
-          '0': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' },
-          '100': { 'transform': 'rotateY(90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' }})
-        },
-        'right': function(width) { _slidrCSS.createKeyframe('slidr-cube-out-right', {
-          '0': { 'transform': 'rotateY(0deg) translateZ(' + width/2 + 'px)', 'opacity': '1' },
-          '100': { 'transform': 'rotateY(-90deg) translateZ(' + width/2 + 'px)', 'opacity': '0' }})
-        },
-        'up': function(height) { _slidrCSS.createKeyframe('slidr-cube-out-up', {
-          '0': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' },
-          '100': { 'transform': 'rotateX(-90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' }})
-        },
-        'down': function(height) { _slidrCSS.createKeyframe('slidr-cube-out-down', {
-          '0': { 'transform': 'rotateX(0deg) translateZ(' + height/2 + 'px)', 'opacity': '1' },
-          '100': { 'transform': 'rotateX(90deg) translateZ(' + height/2 + 'px)', 'opacity': '0' }})
-        },
+        'left': function(w) { _cssHelper['cube']('slidr-cube-out-left', 'Y(0deg)', 'Y(90deg)', w/2, '1', '0'); },
+        'right': function(w) { _cssHelper['cube']('slidr-cube-out-right', 'Y(0deg)', 'Y(-90deg)', w/2, '1', '0'); },
+        'up': function(h) { _cssHelper['cube']('slidr-cube-out-up', 'X(0deg)', 'X(-90deg)', h/2, '1', '0'); },
+        'down': function(h) { _cssHelper['cube']('slidr-cube-out-down', 'X(0deg)', 'X(90deg)', h/2, '1', '0'); },
       }
     },
     'linear': {
@@ -236,40 +230,16 @@ var Slidr = Slidr || function() {
       'init': function() { return null; },
       'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
       'in': {
-        'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-left', {
-          '0': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
-        },
-        'right': function(width) { _slidrCSS.createKeyframe('slidr-linear-in-right', {
-          '0': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'translateX(0px)', 'opacity': '1' }})
-        },
-        'up': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-up', {
-          '0': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
-        },
-        'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-in-down', {
-          '0': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' },
-          '100': { 'transform': 'translateY(0px)', 'opacity': '1' }})
-        },
+        'left': function(w) { _cssHelper['linear']('slidr-linear-in-left', 'X(' + w + 'px)', 'X(0px)', '0', '1'); },
+        'right': function(w) { _cssHelper['linear']('slidr-linear-in-right', 'X(-' + w + 'px)', 'X(0px)', '0', '1'); },
+        'up': function(h) { _cssHelper['linear']('slidr-linear-in-up', 'Y(' + h + 'px)', 'Y(0px)', '0', '1'); },
+        'down': function(h) { _cssHelper['linear']('slidr-linear-in-down', 'Y(-' + h + 'px)', 'Y(0px)', '0', '1'); },
       },
       'out': {
-        'left': function(width) { _slidrCSS.createKeyframe('slidr-linear-out-left', {
-          '0': { 'transform': 'translateX(0px)', 'opacity': '1' },
-          '100': { 'transform': 'translateX(' + width + 'px)', 'opacity': '0' }})
-        },
-        'right': function(width) {_slidrCSS.createKeyframe('slidr-linear-out-right', {
-          '0': { 'transform': 'translateX(0px)', 'opacity': '1' },
-          '100': { 'transform': 'translateX(-' + width + 'px)', 'opacity': '0' }})
-        },
-        'up': function(height) { _slidrCSS.createKeyframe('slidr-linear-out-up', {
-          '0': { 'transform': 'translateY(0px)', 'opacity': '1' },
-          '100': { 'transform': 'translateY(' + height + 'px)', 'opacity': '0' }})
-        },
-        'down': function(height) { _slidrCSS.createKeyframe('slidr-linear-out-down', {
-          '0': { 'transform': 'translateY(0px)', 'opacity': '1' },
-          '100': { 'transform': 'translateY(-' + height + 'px)', 'opacity': '0' }})
-        },
+        'left': function(w) { _cssHelper['linear']('slidr-linear-out-left', 'X(0px)', 'X(' + w + 'px)', '1', '0'); },
+        'right': function(w) { _cssHelper['linear']('slidr-linear-out-right', 'X(0px)', 'X(-' + w + 'px)', '1', '0'); },
+        'up': function(h) { _cssHelper['linear']('slidr-linear-out-up', 'Y(0px)', 'Y(' + h + 'px)', '1', '0'); },
+        'down': function(h) { _cssHelper['linear']('slidr-linear-out-down', 'Y(0px)', 'Y(-' + h + 'px)', '1', '0'); },
       }
     },
     'none': {
