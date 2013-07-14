@@ -43,7 +43,7 @@
         self.vertical(_settings['vertical'], transition);
         // If Slidr is still empty, default to adding valid slides.
         if (_isEmpty(_slidr)) {
-          _addHorizontal(_validSlides, transition);
+          _add('horizontal', _validSlides, transition);
         }
         _initialize();
       }
@@ -79,7 +79,7 @@
         if (_isArray(slides)) {
           if (_isString(slides[0])) { slides = [slides]; }
           for (var i = 0; i < slides.length; i++) {
-            _addHorizontal(slides[i], opt_transition, opt_overwrite);
+            _add('horizontal', slides[i], opt_transition, opt_overwrite);
           }
         }
       }
@@ -97,7 +97,7 @@
         if (_isArray(slides)) {
           if (_isString(slides[0])) { slides = [slides]; }
           for (var i = 0; i < slides.length; i++) {
-            _addVertical(slides[i], opt_transition, opt_overwrite);
+            _add('vertical', slides[i], opt_transition, opt_overwrite);
           }
         }
       }
@@ -593,7 +593,7 @@
     /**
      * Validate the slides we're trying to add isn't going to conflict with existing mapping.
      */
-    function _validateAdd(slides, dir, transition) {
+    function _validateAdd(dir, slides, transition) {
       if (!_isArray(slides) || !dir) {
         return false;
       }
@@ -628,16 +628,18 @@
     }
 
     /**
-     * Adds a [list] of slides we want to navigate in the left/right direction.
+     * Adds a [list] of slides we want to navigate in the horizontal/vertical direction.
      */
-    function _addHorizontal(slides, opt_transition, opt_overwrite) {
+    function _add(dir, slides, opt_transition, opt_overwrite) {
       var transition = _validateTransition(opt_transition);
-      if (!_validateAdd(slides, 'horizontal', transition) && !opt_overwrite) {
+      if (!_validateAdd(dir, slides, transition) && !opt_overwrite) {
         if (!!console && !!console.log) {
-          console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
+          console.log('[Slidr] ' + dir + ' add error, conflicts with existing mapping.');
         }
         return false;
       }
+      var prev = (dir === 'horizontal') ? 'left' : 'up';
+      var next = (dir === 'horizontal') ? 'right' : 'down';
       var current;
       // For each slide, add it to our mapping.
       for (var i = 0; current = slides[i]; i++) {
@@ -645,43 +647,12 @@
           _slidr[current] = {};
         }
         if (!!slides[i-1]) {
-          _slidr[current]['left'] = slides[i-1];
-          _setTransition(current, 'left', transition);
+          _slidr[current][prev] = slides[i-1];
+          _setTransition(current, prev, transition);
         }
         if (!!slides[i+1]) {
-          _slidr[current]['right'] = slides[i+1];
-          _setTransition(current, 'right', transition);
-        }
-        _cssInit(current, transition);
-        _start = (!_start) ? current : _start;
-      }
-      return (!_initialized) ? _initialize() : true;
-    }
-
-    /**
-     * Adds a [list] of slides that we want to navigate in the up/down direction.
-     */
-    function _addVertical(slides, opt_transition, opt_overwrite) {
-      var transition = _validateTransition(opt_transition);
-      if (!_validateAdd(slides, 'vertical', transition) && !opt_overwrite) {
-        if (!!console && !!console.log) {
-          console.log('[Slidr] vertical add error, conflicts with existing mapping.');
-        }
-        return false;
-      }
-      var current;
-      // For each slide, add it to our mapping.
-      for (var i = 0; current = slides[i]; i++) {
-        if (!_isObject(_slidr[current])) {
-          _slidr[current] = {};
-        }
-        if (!!slides[i-1]) {
-          _slidr[current]['up'] = slides[i-1];
-          _setTransition(current, 'up', transition);
-        }
-        if (!!slides[i+1]) {
-          _slidr[current]['down'] = slides[i+1];
-          _setTransition(current, 'down', transition);
+          _slidr[current][next] = slides[i+1];
+          _setTransition(current, next, transition);
         }
         _cssInit(current, transition);
         _start = (!_start) ? current : _start;
