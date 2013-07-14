@@ -42,32 +42,21 @@ var Slidr = Slidr || function() {
   };
 
   /**
-   * Slide up.
+   * Check whether we can slide.
+   * @param {string} dir 'up', 'down', 'left' or 'right'.
+   * @return {boolean}
    */
-  self.up = function() {
-    return _slide('up');
+  self.canGo = function(dir) {
+    return !!_lookup(_slidr, [_current, dir]);
   };
 
   /**
-   * Slide down.
+   * Slide.
+   * @param {string} dir slide 'up', 'down', 'left', or 'right'.
    */
-  self.down = function() {
-    return _slide('down');
-  };
-
-  /**
-   * Slide left.
-   */
-  self.left = function() {
-    return _slide('left');
-  };
-
-  /**
-   * Slide right.
-   */
-  self.right = function() {
-    return _slide('right');
-  };
+  self.go = function(dir) {
+    return _slide(dir);
+  }
 
   /**
    * Adds a set of horizontal slides.
@@ -233,18 +222,18 @@ var Slidr = Slidr || function() {
           'transform-style': 'preserve-3d'
         });
       },
-      'timing': function(animation) { return animation + ' 0.4s ease-out 0s'; },
+      'timing': function(animation) { return animation + ' 0.8s cubic-bezier(0.2, 0.8, 0.4, 1) 0s'; },
       'in': {
-        'left': function(w) { _cssHelper['concave']('slidr-concave-in-left', w*4, w, '0', 'X(100%)', 'X(0)', 'Y(-90deg)', 'Y(0)', '0', '1'); },
-        'right': function(w) { _cssHelper['concave']('slidr-concave-in-right', w*4, w, '0', 'X(-100%)', 'X(0)', 'Y(90deg)', 'Y(0)', '0', '1'); },
-        'up': function(h) { _cssHelper['concave']('slidr-concave-in-up', h*4, h, '0', 'Y(100%)', 'Y(0)', 'X(90deg)', 'X(0)', '0', '1'); },
-        'down': function(h) { _cssHelper['concave']('slidr-concave-in-down', h*4, h, '0', 'Y(-100%)', 'Y(0)', 'X(-90deg)', 'X(0)', '0', '1'); },
+        'left': function(w) { _cssHelper['concave']('slidr-concave-in-left', w*4, w, '0', 'X(80%)', 'X(0)', 'Y(-75deg)', 'Y(0)', '0', '1'); },
+        'right': function(w) { _cssHelper['concave']('slidr-concave-in-right', w*4, w, '0', 'X(-80%)', 'X(0)', 'Y(75deg)', 'Y(0)', '0', '1'); },
+        'up': function(h) { _cssHelper['concave']('slidr-concave-in-up', h*4, h, '0', 'Y(80%)', 'Y(0)', 'X(75deg)', 'X(0)', '0', '1'); },
+        'down': function(h) { _cssHelper['concave']('slidr-concave-in-down', h*4, h, '0', 'Y(-80%)', 'Y(0)', 'X(-75deg)', 'X(0)', '0', '1'); },
       },
       'out': {
-        'left': function(w) { _cssHelper['concave']('slidr-concave-out-left', w*4, '0', w, 'X(0)', 'X(100%)', 'Y(0)', 'Y(-90deg)', '1', '0'); },
-        'right': function(w) { _cssHelper['concave']('slidr-concave-out-right', w*4, '0', w, 'X(0)', 'X(-100%)', 'Y(0)', 'Y(90deg)', '1', '0'); },
-        'up': function(h) { _cssHelper['concave']('slidr-concave-out-up', h*4, '0', h, 'Y(0)', 'Y(100%)', 'X(0)', 'X(90deg)', '1', '0'); },
-        'down': function(h) { _cssHelper['concave']('slidr-concave-out-down', h*4, '0', h, 'Y(0)', 'Y(-100%)', 'X(0)', 'X(-90deg)', '1', '0'); },
+        'left': function(w) { _cssHelper['concave']('slidr-concave-out-left', w*4, '0', w, 'X(0)', 'X(80%)', 'Y(0)', 'Y(-75deg)', '1', '0'); },
+        'right': function(w) { _cssHelper['concave']('slidr-concave-out-right', w*4, '0', w, 'X(0)', 'X(-80%)', 'Y(0)', 'Y(75deg)', '1', '0'); },
+        'up': function(h) { _cssHelper['concave']('slidr-concave-out-up', h*4, '0', h, 'Y(0)', 'Y(80%)', 'X(0)', 'X(75deg)', '1', '0'); },
+        'down': function(h) { _cssHelper['concave']('slidr-concave-out-down', h*4, '0', h, 'Y(0)', 'Y(-80%)', 'X(0)', 'X(-75deg)', '1', '0'); },
       }
     },
     'cube': {
@@ -375,12 +364,19 @@ var Slidr = Slidr || function() {
   }
 
   /**
+   * Validate a transition.
+   */
+  function _validateTransition(transition) {
+    return (!transition 
+      || self.transitions.indexOf(transition) < 0
+      || !_lookup(_css, [transition, 'supported'])) ? _defaultTransition : transition;
+  }
+
+  /**
    * Set the `transition` for an `element` going in the `dir` movement.
    */
   function _setTransition(element, dir, transition) {
-    transition = (!transition
-      || self.transitions.indexOf(transition) < 0
-      || !_lookup(_css, [transition, 'supported'])) ? _defaultTransition : transition;
+    transition = _validateTransition(transition);
     if (!_transitions[element]) {
       _transitions[element] = {};
     }
@@ -503,13 +499,13 @@ var Slidr = Slidr || function() {
   function _dynamicBindings() {
     $(document).keydown(function(e) {
       // Down arrow
-      if (e.which === 40) { self.down(); }
+      if (e.which === 40) { self.go('down'); }
       // Right arrow
-      else if (e.which === 39) { self.right(); }
+      else if (e.which === 39) { self.go('right'); }
       // Up arrow
-      else if (e.which === 38) { self.up(); }
+      else if (e.which === 38) { self.go('up'); }
       // Left arrow
-      else if (e.which === 37) { self.left(); }
+      else if (e.which === 37) { self.go('left'); }
     });
   }
 
@@ -554,7 +550,7 @@ var Slidr = Slidr || function() {
    * Adds a [list] of slides we want to navigate in the left/right direction.
    */
   function _addHorizontal(slides, opt_transition, opt_overwrite) {
-    var transition = opt_transition || _defaultTransition;
+    var transition = _validateTransition(opt_transition);
     if (!_validateAdd(slides, 'horizontal', transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] horizontal add error, conflicts with existing mapping.');
@@ -585,7 +581,7 @@ var Slidr = Slidr || function() {
    * Adds a [list] of slides that we want to navigate in the up/down direction.
    */
   function _addVertical(slides, opt_transition, opt_overwrite) {
-    var transition = opt_transition || _defaultTransition;
+    var transition = _validateTransition(opt_transition);
     if (!_validateAdd(slides, 'vertical', transition) && !opt_overwrite) {
       if (!!console && !!console.log) {
         console.log('[Slidr] vertical add error, conflicts with existing mapping.');
