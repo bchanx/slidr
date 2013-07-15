@@ -33,7 +33,14 @@
         if (_isString(opt_start) && !!_slidr[opt_start]) {
           _start = opt_start;
         }
-        $(_id).css({'position': 'relative', 'display': document.getElementById(_id.slice(1)).style.display || 'table'});
+        var display = document.getElementById(_id.slice(1)).style.display;
+        var position = document.getElementById(_id.slice(1)).style.position;
+        $(_id).css({
+          'visibility': 'visible',
+          'opacity': '1',
+          'display': (display === '' || display !== 'inline-block') ? 'table' : display,
+          'position': (position === '') ? 'relative' : position
+        });
         _display();
         _autoResize();
         _started = true;
@@ -368,6 +375,7 @@
           var display = $(element).css('display');
           var extra = {
             'display': (display === 'none') ? 'block' : display,
+            'visibility': 'visible',
             'position': 'absolute',
             'left': '50%',
             'margin-left': '-' + $(element).width()/2 + 'px',
