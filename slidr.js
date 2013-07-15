@@ -10,15 +10,12 @@
 
 (function(window, document, undefined) {
 
-  var Slidr = window.Slidr = function(id) {
+  var Slidr = window.Slidr = function(id, opt_settings) {
     var _id = id;
-    var _settings = {
+    var _settings = _extend(opt_settings || {}, {
       'transition': 'none',
       'fading': true,
-      'start': null,
-      'horizontal': null,
-      'vertical': null
-    };
+    });
 
     var self = this;
 
@@ -30,22 +27,16 @@
     /**
      * Start the Slidr!
      */
-    self.init = function(opt_settings) {
-      if (!_initialized && _id && $(_id).length) {
-        _extend(opt_settings || {}, _settings);
-        // Set the starting slide for when we call initialize().
-        if (!_start && !!_settings['start']) {
-          _start = _settings['start'];
+    self.start = function(opt_start) {
+      if (!_started && _id && $(_id).length) {
+        // Set the slide to start at.
+        if (_isString(opt_start) && !!_slidr[opt_start]) {
+          _start = opt_start;
         }
-        // Add horizontal and vertical slides.
-        var transition = _settings['transition'];
-        self.horizontal(_settings['horizontal'], transition);
-        self.vertical(_settings['vertical'], transition);
-        // If Slidr is still empty, default to adding valid slides.
-        if (_isEmpty(_slidr)) {
-          _add('horizontal', _validSlides, transition);
-        }
-        _initialize();
+        $(_id).css({'position': 'relative', 'display': document.getElementById(_id.slice(1)).style.display || 'table'});
+        _display();
+        _autoResize();
+        _started = true;
       }
       return self;
     };
@@ -56,7 +47,7 @@
      * @return {boolean}
      */
     self.canSlide = function(dir) {
-      return _initialized && !!_lookup(_slidr, [_current, dir]);
+      return _started && !!_lookup(_slidr, [_current, dir]);
     };
 
     /**
@@ -64,7 +55,7 @@
      * @param {string} dir slide 'up', 'down', 'left', or 'right'.
      */
     self.slide = function(dir) {
-      return _initialized && _slide(dir);
+      return _started && _slide(dir);
     };
 
     /**
@@ -76,12 +67,7 @@
     self.horizontal = function(slides, opt_transition, opt_overwrite) {
       if (!!_id && $(_id).length) {
         _findValidSlides(_id);
-        if (_isArray(slides)) {
-          if (_isString(slides[0])) { slides = [slides]; }
-          for (var i = 0; i < slides.length; i++) {
-            _add('horizontal', slides[i], opt_transition, opt_overwrite);
-          }
-        }
+        _add('horizontal', slides, opt_transition, opt_overwrite);
       }
     };
 
@@ -94,12 +80,7 @@
     self.vertical = function(slides, opt_transition, opt_overwrite) {
       if (!!_id && $(_id).length) {
         _findValidSlides(_id);
-        if (_isArray(slides)) {
-          if (_isString(slides[0])) { slides = [slides]; }
-          for (var i = 0; i < slides.length; i++) {
-            _add('vertical', slides[i], opt_transition, opt_overwrite);
-          }
-        }
+        _add('vertical', slides, opt_transition, opt_overwrite);
       }
     };
 
@@ -119,9 +100,14 @@
     var _validSlides = [];
 
     /**
-     * Whether we've successfully initialized.
+     * Whether we've successfully called start().
      */
-    var _initialized = false;
+    var _started = false;
+
+    /**
+     * Whether we've successfully displayed the start slide.
+     */
+    var _displayed = false;
 
     /**
      * The slide to start at.
@@ -218,22 +204,6 @@
         }
       }
       return to;
-    }
-
-    /**
-     * Initialize our Slidr container.
-     */
-    function _initialize() {
-      if (!_initialized && _start && $(_start).length && !!_slidr[_start]) {
-        $(_id).css({'position': 'relative', 'display': document.getElementById(_id.slice(1)).style.display || 'table'});
-        _current = _start;
-        // Hide/show to force a redraw.
-        $(_current).hide().css({'opacity': '1', 'z-index': '1', 'pointer-events': 'auto'}).fadeIn(500);
-        _autoResize();
-        _initialized = true;
-        return true;
-      }
-      return false;
     }
 
     /**
@@ -419,7 +389,7 @@
      */
     function _cssAnimationName(transition, type, dir) {
       var parts = ['slidr', transition, type];
-      if (transition !== 'fade') {
+      if (transition !== 'fade' && dir) {
         parts.push(dir);
       }
       return parts.join('-');
@@ -435,13 +405,15 @@
           'z-index': (type === 'in') ? '1': '0',
           'pointer-events': (type === 'in') ? 'auto': 'none'
         };
-        if (transition && dir && _lookup(_css, [transition, 'supported'])) {
+        if (transition && _lookup(_css, [transition, 'supported'])) {
           var animation = _slidrCSS.resolve('animation');
           var timing = _lookup(_css, [transition, 'timing']);
           if (animation && _isFunction(timing)) {
-            var keyframe = _lookup(_css, [transition, type, dir]);
-            if (_isFunction(keyframe)) {
-              (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+            if (dir) {
+              var keyframe = _lookup(_css, [transition, type, dir]);
+              if (_isFunction(keyframe)) {
+                (dir === 'up' || dir === 'down') ? keyframe($(element).height()) : keyframe($(element).width());
+              }
             }
             timing = timing(_cssAnimationName(transition, type, dir));
             css[animation] = timing;
@@ -528,11 +500,26 @@
     }
 
     /**
+     * Display our starting slide.
+     */
+    function _display() {
+      if (!_displayed && _start && $(_start).length && !!_slidr[_start]) {
+        // Hide/show to force a redraw.
+        _current = _start;
+        _cssInit(_current, 'fade');
+        _cssAnimate(_current, 'fade', 'in');
+        _displayed = true;
+        return true;
+      }
+      return false;
+    }
+
+    /**
      * Watch for height and width changes in the slides, propagate the change to the slidr container.
      */
     function _autoResize() {
-      var height = null;
-      var width = null;
+      var height = 0;
+      var width = 0;
       var isDynamicHeight = document.getElementById(_id.slice(1)).style.height === '';
       var isDynamicWidth = document.getElementById(_id.slice(1)).style.width === '';
       var timerId = setInterval((function watchDimensions() {
@@ -542,13 +529,13 @@
         } else if ($(_id).css('visibility') === 'hidden') {
           height = _setHeight(0);
           width = _setWidth(0);
-        } else if (_current && $(_current).length) {
-          var newHeight = $(_current).height();
+        } else {
+          var newHeight = $(_current).height() || 0;
           if (isDynamicHeight && height != newHeight) {
             height = _setHeight(newHeight);
           }
-          var parentWidth = $(_id).parent().width();
-          var newWidth = $(_current).width();
+          var parentWidth = $(_id).parent().width() || 0;
+          var newWidth = $(_current).width() || 0;
           var ignorePadding = false;
           if (parentWidth > newWidth) {
             newWidth = parentWidth;
@@ -657,7 +644,10 @@
         _cssInit(current, transition);
         _start = (!_start) ? current : _start;
       }
-      return (!_initialized) ? _initialize() : true;
+      if (_started && !_displayed) {
+        _display();
+      }
+      return true;
     }
 
     /**
