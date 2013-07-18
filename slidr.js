@@ -22,7 +22,7 @@
     /**
      * [List] of available slide transitions.
      */
-    self.transitions = ['concave', 'cube', 'fade', 'linear', 'none'];
+    self.transitions = ['cube', 'fade', 'linear', 'none'];
 
     /**
      * Start the Slidr!
@@ -233,15 +233,6 @@
      * Helper functions for generating css keyframes.
      */
     var _cssHelper = {
-      'concave': function(animation, perspective, zStart, zEnd, translateStart, translateEnd,
-        rotateStart, rotateEnd, opacityStart, opacityEnd) {
-        _slidrCSS.createKeyframe(animation, {
-          '0': { 'transform': 'perspective(' + perspective + 'px) translateZ(' + zStart + 'px)' +
-                  ' translate' + translateStart + ' rotate' + rotateStart, 'opacity': opacityStart },
-          '100': { 'transform': 'perspective(' + perspective + 'px) translateZ(' + zEnd + 'px)' +
-                    ' translate' + translateEnd + ' rotate' + rotateEnd, 'opacity': opacityEnd }
-        });
-      },
       'cube': function(animation, rotateStart, rotateEnd, translateZ, opacityStart, opacityEnd) {
         _slidrCSS.createKeyframe(animation, {
           '0': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
@@ -263,37 +254,6 @@
      * Defines our available css transitions.
      */
     var _css = {
-      'concave': {
-        'supported': _slidrCSS.supports([
-          'animation', 'perspective', 'backface-visibility', 'transform-style', 'transform', 'opacity']),
-        'init': function() { 
-          return _slidrCSS.fixup({
-            'backface-visibility': 'hidden',
-            'transform-style': 'preserve-3d'
-          });
-        },
-        'timing': function(animation) { return animation + ' 0.8s cubic-bezier(0.2, 0.8, 0.4, 1) 0s'; },
-        'in': {
-          'left': function(w) { _cssHelper['concave']('slidr-concave-in-left',
-            w*4, w, '0', 'X(80%)', 'X(0)', 'Y(-75deg)', 'Y(0)', _settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['concave']('slidr-concave-in-right',
-            w*4, w, '0', 'X(-80%)', 'X(0)', 'Y(75deg)', 'Y(0)', _settings['fading'] ? '0' : '1', '1'); },
-          'up': function(h) { _cssHelper['concave']('slidr-concave-in-up',
-            h*4, h, '0', 'Y(80%)', 'Y(0)', 'X(75deg)', 'X(0)', _settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['concave']('slidr-concave-in-down',
-            h*4, h, '0', 'Y(-80%)', 'Y(0)', 'X(-75deg)', 'X(0)', _settings['fading'] ? '0' : '1', '1'); },
-        },
-        'out': {
-          'left': function(w) { _cssHelper['concave']('slidr-concave-out-left',
-            w*4, '0', w, 'X(0)', 'X(80%)', 'Y(0)', 'Y(-75deg)', '1', _settings['fading'] ? '0' : '1'); },
-          'right': function(w) { _cssHelper['concave']('slidr-concave-out-right',
-            w*4, '0', w, 'X(0)', 'X(-80%)', 'Y(0)', 'Y(75deg)', '1', _settings['fading'] ? '0' : '1'); },
-          'up': function(h) { _cssHelper['concave']('slidr-concave-out-up',
-            h*4, '0', h, 'Y(0)', 'Y(80%)', 'X(0)', 'X(75deg)', '1', _settings['fading'] ? '0' : '1'); },
-          'down': function(h) { _cssHelper['concave']('slidr-concave-out-down',
-            h*4, '0', h, 'Y(0)', 'Y(-80%)', 'X(0)', 'X(-75deg)', '1', _settings['fading'] ? '0' : '1'); },
-        }
-      },
       'cube': {
         'supported': _slidrCSS.supports(['animation', 'backface-visibility', 'transform-style', 'transform', 'opacity']),
         'init': function() { 
@@ -512,7 +472,6 @@
      */
     function _display() {
       if (!_displayed && _start && $(_start).length && !!_slidr[_start]) {
-        // Hide/show to force a redraw.
         _current = _start;
         _cssInit(_current, 'fade');
         _cssAnimate(_current, 'fade', 'in');
