@@ -135,7 +135,7 @@
      * Check if object is a string.
      */
     function _isString(obj) {
-      return (!!obj) && (typeof obj === 'string');
+      return typeof obj === 'string';
     }
 
     /**
@@ -255,7 +255,7 @@
      */
     var _css = {
       'cube': {
-        'supported': _slidrCSS.supports(['animation', 'backface-visibility', 'transform-style', 'transform', 'opacity']),
+        'supported': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
         'init': function() { 
           return _slidrCSS.fixup({
             'backface-visibility': 'hidden',
@@ -285,7 +285,7 @@
         }
       },
       'fade': {
-        'supported': _slidrCSS.supports(['animation', 'opacity']),
+        'supported': _slidrCSS.supports('animation', 'opacity'),
         'init': function() {
           _cssHelper['fade']('slidr-fade-in', '0', '1');
           _cssHelper['fade']('slidr-fade-out', '1', '0');
@@ -294,7 +294,7 @@
         'timing': function(animation) { return animation + ' 0.4s ease-out 0s'; },
       },
       'linear': {
-        'supported': _slidrCSS.supports(['transform', 'opacity']),
+        'supported': _slidrCSS.supports('transform', 'opacity'),
         'init': function() { return null; },
         'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
         'in': {
@@ -652,19 +652,12 @@
       /**
        * Check whether all given css properties are supported in the browser.
        */
-      self.supports = function(properties) {
-        if (_isString(properties)) {
-          properties = [properties];
+      self.supports = function(/* prop1, prop2... */) {
+        var prop;
+        for (var i = 0; prop = arguments[i]; i++) {
+          if (!self.resolve(prop)) return false;
         }
-        if (_isArray(properties)) {
-          for (var i = 0; i < properties.length; i++) {
-            if (!self.resolve(properties[i])) {
-              return false;
-            }
-          }
-          return true;
-        }
-        return false;
+        return true;
       };
 
       /**
@@ -711,7 +704,7 @@
         }
         rule.push('}');
         rule = rule.join(' ');
-        _addKeyframeRule(name, rule);
+        _addCSS(name, rule);
       };
 
       /**
@@ -722,7 +715,12 @@
       /**
        * Pointer to our Slidr CSS style sheet.
        */
-      var _styleSheet = null;
+      var _styleSheet = (function() {
+        var style = document.createElement('style');
+        style.type = 'text/css';
+        document.head.appendChild(style);
+        return style.sheet || style.styleSheet;
+      }());
 
       /**
        * The CSS prefix for the displaying browser.
@@ -740,28 +738,17 @@
       var _propertyCache = {};
 
       /**
-       * Adds a CSS keyframe rule to our custom stylesheet.
+       * Adds a CSS rule to our Slidr stylesheet.
        */
-      function _addKeyframeRule(name, rule) {
-        if (!_styleSheet) {
-          var styleSheetIndex = 0;
-          if (document.styleSheets && document.styleSheets.length) {
-            styleSheetIndex = document.styleSheets.length;
-          }
-          var style = document.createElement('style');
-          document.head.appendChild(style);
-          _styleSheet = document.styleSheets[styleSheetIndex];
-        }
-        var rules = _styleSheet.cssRules;
-        for (var r = 0; r < rules.length; r++) {
-          // Delete the rule if it already exists.
-          if (rules[r]['name'] == name) {
+      function _addCSS(name, rule) {
+        var css;
+        for (var r = 0; css = _styleSheet.cssRules[r]; r++) {
+          if (css.name == name) {
             _styleSheet.deleteRule(r);
             break;
           }
         }
-        // Now insert it. 
-        _styleSheet.insertRule(rule, rules.length);
+        _styleSheet.insertRule(rule);
       }
 
       /**
