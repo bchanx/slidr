@@ -7,8 +7,15 @@
 /**
  * slidr - A simple Javascript library for adding slide effects. Currently under development.
  */
-
-(function(window, document, undefined) {
+(function(root, factory) {
+  // CommonJS
+  if (typeof exports === 'object') module.exports = factory();
+  // AMD module
+  else if (typeof define === 'function' && define.amd) define(factory);
+  // Browser globals
+  else root.slidr = factory();
+} (this, function() {
+  'use strict';
 
   /**
    * Traverse [keys] in {object} to lookup a value, or null if nothing found.
@@ -51,49 +58,166 @@
   var _slidrCSS = new SlidrCSS();
 
   /**
-   * If `action` is a string, do a css lookup. Otherwise, add css styles to `el`.
+   * If `props` is a string, do a css lookup. Otherwise, add css styles to `el`.
    */
-  function css(el, action) {
-    if (isString(action)) {
-      var style = window.getComputedStyle(el)[_slidrCSS.resolve(action)];
+  function css(el, props) {
+    if (isString(props)) {
+      var style = window.getComputedStyle(el)[_slidrCSS.resolve(props)];
       return (style) ? (style.slice(-2) === 'px' && style.indexOf('px') == style.length - 2) ? 
         parseInt(style.slice(0, -2)) : style : 'none';
     }
-    for (a in action) if (_slidrCSS.resolve(a)) el.style[_slidrCSS.resolve(a)] = action[a];
+    for (var p in props) if (_slidrCSS.resolve(p)) el.style[_slidrCSS.resolve(p)] = props[p];
     return el;
   }
 
+  /**
+   * The Slidr constructor.
+   */
+  var Slidr = function(target, opt_settings) {
+    // Reference to the Slidr element.
+    var slidr = target;
 
-  var Slidr = window.Slidr = function(id, opt_settings) {
-    var _slidr = document.getElementById(id);
-    var _settings = extend({
+    // Settings for this Slidr.
+    var settings = extend({
       'transition': 'none',
       'direction': 'horizontal',
-      'fading': true,
+      'fading': true
     }, opt_settings);
 
-    var self = this;
+    // A {mapping} of slides to their neighbors.
+    var _slides = {};
 
-    /**
-     * [List] of available slide transitions.
-     */
-    self.transitions = ['cube', 'fade', 'linear', 'none'];
+    // A {mapping} of slides and their transition effects.
+    var _trans = {};
+
+    // Whether we've successfully called start().
+    var _started = false;
+
+    // Whether we've successfully started to display.
+    var _displayed = false;
+
+    // The slide to start at.
+    var _start = null;
+
+    // The current slide.
+    var _current = null;
+
+    var transition = {
+      // Available transitions.
+      available: ['cube', 'fade', 'linear', 'none'],
+      // Validates a given transition.
+      validate: function(trans) {
+        return (this.available.indexOf(trans) < 0
+          || !lookup(_css, [trans, 'supported'])) ? settings['transition'] : trans;
+      },
+      // Get the direction transition for an element.
+      get: function(el, dir) {
+        return lookup(_trans, [el, dir]);
+      },
+      // Sets the direction transition for an element.
+      set: function(el, dir, trans) {
+        trans = this.validate(trans);
+        if (!_trans[el]) _trans[el] = {};
+        _trans[el][dir] = trans;
+        return trans;
+      },
+      // Applies a directional transition to an element entering/leaving the Slidr.
+      apply: function(el, type, dir) {
+        var trans = this.get(el, dir);
+        if (trans) _cssAnimate(el, trans, type, dir);
+      }
+    };
+
+    var slides = {
+      // Get the data-slidr id.
+      get: function(el, dir) {
+        return lookup(_slides, [el, dir]);
+      },
+      // Finds all valid slides (direct children with 'data-slidr' attributes).
+      find: function(opt_asList) {
+        var valid = (opt_asList) ? [] : {};
+        var slide, name;
+        for (var i = 0; slide = slidr.childNodes[i]; i++) {
+          if (slide.getAttribute) {
+            name = slide.getAttribute('data-slidr');
+            if (name) {
+              if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
+              else if (!(name in valid)) valid[name] = slide;
+            }
+          }
+        }
+        return valid;
+      },
+      // Validate the [ids] we're trying to add doesn't conflict with existing slide assignments.
+      validate: function(ids, trans, valid, prev, next) {
+        if (!ids || ids.constructor !== Array) return false;
+        var current;
+        // For each slide we're trying to add, check it against our known mapping.
+        for (var i = 0; current = ids[i]; i++) {
+          if (!(current in valid)) return false;
+          if (_slides[current]) {
+            var newPrev = ids[i-1] || null;
+            var newNext = ids[i+1] || null;
+            var oldPrev = this.get(current, prev);
+            var oldNext = this.get(current, next);
+            var previousPrev = this.get(newNext, prev);
+            var oldPrevTrans = transition.get(current, prev);
+            var oldNextTrans = transition.get(current, next);
+            // Are we about to override an existing mapping?
+            if ((oldNext && newNext && oldNext != newNext)
+              || (oldPrev && newPrev && oldPrev != newPrev)
+              || (previousPrev && previousPrev != current)
+              || (newPrev && oldPrevTrans && oldPrevTrans != trans)
+              || (newNext && oldNextTrans && oldNextTrans != trans)
+            ) {
+              return false;
+            }
+          }
+        }
+        return true;
+      },
+      // Adds a [list] of ids to our Slidr.
+      add: function(ids, trans, valid, prev, next) {
+        var current;
+        for (var i = 0; current = ids[i]; i++) {
+          if (!_slides[current]) {
+            _slides[current] = {};
+            _slides[current].target = valid[current];
+          }
+          if (ids[i-1]) {
+            _slides[current][prev] = ids[i-1];
+            transition.set(current, prev, trans);
+          }
+          if (ids[i+1]) {
+            _slides[current][next] = ids[i+1];
+            transition.set(current, next, trans);
+          }
+          _cssInit(current, trans);
+          _start = (!_start) ? current : _start;
+        }
+        if (_started && !_displayed) _display();
+        return true;
+      }
+    };
+
+    var self = this;
 
     /**
      * Start the Slidr!
      * @param {string} opt_start slide to start on.
      */
     self.start = function(opt_start) {
-      if (!_started && _slidr) {
-        if (_slides[opt_start]) _start = opt_start;
-        var display = css(_slidr, 'display');
-        var position = css(_slidr, 'position');
-        css(_slidr, {
+      if (!_started && slidr) {
+        var display = css(slidr, 'display');
+        var position = css(slidr, 'position');
+        css(slidr, {
           'visibility': 'visible',
           'opacity': '1',
           'display': (display !== 'inline-block') ? 'table' : display,
           'position': (position === 'static') ? 'relative' : position
         });
+        if (!_start) _add(settings['direction'], slides.find(true), settings['transition']);
+        if (_slides[opt_start]) _start = opt_start;
         _display();
         _autoResize();
         _started = true;
@@ -107,7 +231,7 @@
      * @return {boolean}
      */
     self.canSlide = function(dir) {
-      return _started && !!lookup(_slides, [_current, dir]);
+      return _started && !!slides.get(_current, dir);
     };
 
     /**
@@ -119,76 +243,25 @@
     };
 
     /**
-     * Adds a set of horizontal slides.
-     * @param {Array} slides A list of data-slidr id's to add to Slidr. Slides must be children elements of the Slidr.
-     * @param {String?} opt_transition The transition to apply between the slides, defaults to none.
-     * @param {Boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
+     * Adds a set of slides.
+     * @param {string} direction `horizontal` or `vertical`.
+     * @param {Array} ids A list of `data-slidr` id's to add to Slidr. Slides must be children elements of the Slidr.
+     * @param {string?} opt_transition The transition to apply between the slides. Defaults to settings.
+     * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
      */
-    self.horizontal = function(slides, opt_transition, opt_overwrite) {
-      if (_slidr) _add('horizontal', slides, opt_transition, opt_overwrite);
-    };
-
-    /**
-     * Adds a set of vertical slides.
-     * @param {Array} slides A list of data-slidr id's to add to Slidr. Slides must be children elements of the Slidr.
-     * @param {String?} opt_transition The transition to apply between the slides, defaults to none.
-     * @param {Boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
-     */
-    self.vertical = function(slides, opt_transition, opt_overwrite) {
-      if (_slidr) _add('vertical', slides, opt_transition, opt_overwrite);
-    };
-
-    /**
-     * A {mapping} of slides to their neighbors.
-     */
-    var _slides = {};
-
-    /**
-     * A {mapping} of slides and their transition effects.
-     */
-    var _trans = {};
-
-    /**
-     * Valid slides contained in the DOM within our Slidr element.
-     */
-    var _validSlides = {};
-
-    /**
-     * Whether we've successfully called start().
-     */
-    var _started = false;
-
-    /**
-     * Whether we've successfully displayed the start slide.
-     */
-    var _displayed = false;
-
-    /**
-     * The slide to start at.
-     */
-    var _start = null;
-
-    /**
-     * The current slide.
-     */
-    var _current = null;
-
-    /**
-     * Find all direct children of our Slidr with an id attribute.
-     */
-    function _findValidSlides() {
-      _validSlides = {};
-      if (_slidr) {
-        var slide;
-        for (var i = 0; slide = _slidr.childNodes[i]; i++) {
-          if (slide.getAttribute) {
-            var name = slide.getAttribute('data-slidr');
-            if (name && !(name in _validSlides)) _validSlides[name] = slide;
-          }
+    self.add = function(direction, ids, opt_transition, opt_overwrite) {
+      if (slidr) {
+        var trans = transition.validate(opt_transition);
+        var valid = slides.find();
+        var prev = (direction === 'horizontal' || direction === 'h') ? 'left' : 'up';
+        var next = (direction === 'horizontal' || direction === 'h') ? 'right' : 'down';
+        if (!slides.validate(ids, trans, valid, prev, next) && !opt_overwrite) {
+          console.warn('[Slidr] Error adding [' + direction + '] slides.');
+          return false;
         }
+        return slides.add(ids, trans, valid, prev, next);
       }
-      return _validSlides;
-    }
+    };
 
     /**
      * Helper functions for generating css keyframes.
@@ -218,31 +291,31 @@
       'cube': {
         'supported': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
         'init': function() { 
-          return _slidrCSS.fixup({
+          return {
             'backface-visibility': 'hidden',
             'transform-style': 'preserve-3d'
-          });
+          };
         },
         'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
         'in': {
           'left': function(w) { _cssHelper['cube']('slidr-cube-in-left',
-            'Y(90deg)', 'Y(0deg)', w/2, _settings['fading'] ? '0' : '1', '1'); },
+            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
           'right': function(w) { _cssHelper['cube']('slidr-cube-in-right',
-            'Y(-90deg)', 'Y(0deg)', w/2, _settings['fading'] ? '0' : '1', '1'); },
+            'Y(-90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
           'up': function(h) { _cssHelper['cube']('slidr-cube-in-up',
-            'X(-90deg)', 'X(0deg)', h/2, _settings['fading'] ? '0' : '1', '1'); },
+            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
           'down': function(h) { _cssHelper['cube']('slidr-cube-in-down',
-            'X(90deg)', 'X(0deg)', h/2, _settings['fading'] ? '0' : '1', '1'); },
+            'X(90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(w) { _cssHelper['cube']('slidr-cube-out-left',
-            'Y(0deg)', 'Y(90deg)', w/2, '1', _settings['fading'] ? '0' : '1'); },
+            'Y(0deg)', 'Y(90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
           'right': function(w) { _cssHelper['cube']('slidr-cube-out-right',
-            'Y(0deg)', 'Y(-90deg)', w/2, '1', _settings['fading'] ? '0' : '1'); },
+            'Y(0deg)', 'Y(-90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
           'up': function(h) { _cssHelper['cube']('slidr-cube-out-up',
-            'X(0deg)', 'X(-90deg)', h/2, '1', _settings['fading'] ? '0' : '1'); },
+            'X(0deg)', 'X(-90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
           'down': function(h) { _cssHelper['cube']('slidr-cube-out-down',
-            'X(0deg)', 'X(90deg)', h/2, '1', _settings['fading'] ? '0' : '1'); },
+            'X(0deg)', 'X(90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
         }
       },
       'fade': {
@@ -260,23 +333,23 @@
         'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
         'in': {
           'left': function(w) { _cssHelper['linear']('slidr-linear-in-left',
-            'X(' + w + 'px)', 'X(0px)', _settings['fading'] ? '0' : '1', '1'); },
+            'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
           'right': function(w) { _cssHelper['linear']('slidr-linear-in-right',
-            'X(-' + w + 'px)', 'X(0px)', _settings['fading'] ? '0' : '1', '1'); },
+            'X(-' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
           'up': function(h) { _cssHelper['linear']('slidr-linear-in-up',
-            'Y(' + h + 'px)', 'Y(0px)', _settings['fading'] ? '0' : '1', '1'); },
+            'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
           'down': function(h) { _cssHelper['linear']('slidr-linear-in-down',
-            'Y(-' + h + 'px)', 'Y(0px)', _settings['fading'] ? '0' : '1', '1'); },
+            'Y(-' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(w) { _cssHelper['linear']('slidr-linear-out-left',
-            'X(0px)', 'X(' + w + 'px)', '1', _settings['fading'] ? '0' : '1'); },
+            'X(0px)', 'X(' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
           'right': function(w) { _cssHelper['linear']('slidr-linear-out-right',
-            'X(0px)', 'X(-' + w + 'px)', '1', _settings['fading'] ? '0' : '1'); },
+            'X(0px)', 'X(-' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
           'up': function(h) { _cssHelper['linear']('slidr-linear-out-up',
-            'Y(0px)', 'Y(' + h + 'px)', '1', _settings['fading'] ? '0' : '1'); },
+            'Y(0px)', 'Y(' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
           'down': function(h) { _cssHelper['linear']('slidr-linear-out-down',
-            'Y(0px)', 'Y(-' + h + 'px)', '1', _settings['fading'] ? '0' : '1'); },
+            'Y(0px)', 'Y(-' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
         }
       },
       'none': {
@@ -342,45 +415,6 @@
     }
 
     /**
-     * Get the next transition for `el` entering/leaving the viewport from direction `dir`.
-     */
-    function _getTransition(el, dir) {
-      return lookup(_trans, [el, dir]);
-    }
-
-    /**
-     * Validate a transition.
-     */
-    function _validateTransition(trans) {
-      return (self.transitions.indexOf(trans) < 0
-        || !lookup(_css, [trans, 'supported'])) ? _settings['transition'] : trans;
-    }
-
-    /**
-     * Set `trans` for an `el` going in direciton `dir`.
-     */
-    function _setTransition(el, dir, trans) {
-      trans = _validateTransition(trans);
-      if (!_trans[el]) {
-        _trans[el] = {};
-      }
-      _trans[el][dir] = trans;
-      return trans;
-    }
-
-    /**
-     * Apply a transition to an `el`, coming [in|out] of the Slidr as `type`, in direction `dir`.
-     */
-    function _applyTransition(el, type, dir) {
-      if (el && type && dir) {
-        var trans = _getTransition(el, dir);
-        if (trans) {
-          _cssAnimate(el, trans, type, dir);
-        }
-      }
-    }
-
-    /**
      * Returns the opposite direction.
      */
     function _opposite(dir) {
@@ -391,22 +425,21 @@
      * Check if a Slidr transition will have overflow issues.
      */
     function _hasOverflow(current, next, dir) {
-      var overFlow = { 'linear': true };
-      current = _getTransition(current, dir);
-      next = _getTransition(next, _opposite(dir));
-      return ((dir === 'left' || dir === 'right') && (overFlow[current] || overFlow[next]));
+      current = transition.get(current, dir);
+      next = transition.get(next, _opposite(dir));
+      return ((dir === 'left' || dir === 'right') && (current === 'linear' || next === 'linear'));
     }
 
     /**
-     * Transition to the next slide in the `dir` direction.
+     * Transition to the next slide in direction `dir`.
      */
     function _slide(dir) {
-      var next = lookup(_slides, [_current, dir]);
-      if (!!_current && !!next) {
-        css(_slidr, { overflow: _hasOverflow(_current, next, dir) ? 'hidden' : 'auto' });
-        _applyTransition(_current, 'out', dir);
+      var next = slides.get(_current, dir);
+      if (_current && next) {
+        css(slidr, { overflow: _hasOverflow(_current, next, dir) ? 'hidden' : 'auto' });
+        transition.apply(_current, 'out', dir);
         _current = next;
-        _applyTransition(next, 'in', _opposite(dir));
+        transition.apply(next, 'in', _opposite(dir));
         return true;
       }
       return false;
@@ -421,35 +454,39 @@
         _cssInit(_current, 'fade');
         _cssAnimate(_current, 'fade', 'in');
         _displayed = true;
-        return true;
       }
-      return false;
     }
 
     /**
      * Check whether Slidr height or width should be dynamically set.
      */
     function isDynamic() {
-      var clone = _slidr.cloneNode(false);
+      var clone = slidr.cloneNode(false);
       var dummy = document.createElement('div');
       dummy.setAttribute('style', 'width: 42px; height: 42px;');
       clone.setAttribute('style', 'position: absolute; opacity: 0');
       clone.appendChild(dummy);
-      _slidr.parentNode.insertBefore(clone, _slidr);
+      slidr.parentNode.insertBefore(clone, slidr);
       var dynamic = {
         height: css(clone, 'height') === (42 + dynamicHeight()),
         width: css(clone, 'width') === (42 + dynamicWidth())
-      }
-      _slidr.parentNode.removeChild(clone);
+      };
+      slidr.parentNode.removeChild(clone);
       return dynamic;
     }
 
+    /**
+     * Grabs slidr height padding.
+     */
     function dynamicHeight() {
-     return css(_slidr, 'padding-top') + css(_slidr, 'padding-bottom');
+      return css(slidr, 'padding-top') + css(slidr, 'padding-bottom');
     }
 
+    /**
+     * Grabs slidr width padding.
+     */
     function dynamicWidth() {
-      return css(_slidr, 'padding-left') + css(_slidr, 'padding-right');
+      return css(slidr, 'padding-left') + css(slidr, 'padding-right');
     }
 
     /**
@@ -460,27 +497,23 @@
       var width = 0;
       var dynamic = isDynamic();
       var timerId = setInterval((function watchDimensions() {
-        if (!contains(document, _slidr)) {
+        if (!contains(document, slidr)) {
           clearInterval(timerId);
-        } else if (css(_slidr, 'visibility') === 'hidden') {
+        } else if (css(slidr, 'visibility') === 'hidden') {
           height = _setHeight(0);
           width = _setWidth(0);
         } else if (_slides[_current]) {
           var target = _slides[_current].target;
           var newHeight = css(target, 'height');
-          if (dynamic.height && height != newHeight) {
-            height = _setHeight(newHeight);
-          }
-          var parentWidth = css(_slidr.parentNode, 'width');
+          var parentWidth = css(slidr.parentNode, 'width');
           var newWidth = css(target, 'width');
           var ignorePadding = false;
           if (parentWidth > newWidth) {
             newWidth = parentWidth;
             ignorePadding = true;
           }
-          if (dynamic.width && width != newWidth) {
-            width = _setWidth(newWidth, ignorePadding);
-          }
+          if (dynamic.height && height != newHeight) height = _setHeight(newHeight);
+          if (dynamic.width && width != newWidth) width = _setWidth(newWidth, ignorePadding);
         }
         return watchDimensions;
       })(), 250);
@@ -490,7 +523,7 @@
      * Sets the height of our Slidr container.
      */
     function _setHeight(height) {
-      css(_slidr, { height: height + dynamicHeight() + 'px' });
+      css(slidr, { height: height + dynamicHeight() + 'px' });
       return height;
     }
 
@@ -498,79 +531,10 @@
      * Sets the width of our Slidr container.
      */
     function _setWidth(width, ignorePadding) {
-      var padding = (!!ignorePadding) ? 0 : css(_slidr, 'padding-left') + css(_slidr, 'padding-right');
-      var margin = css(_slidr, 'margin-left') + css(_slidr, 'margin-right');
-      css(_slidr, { width: width + padding - margin + 'px' });
+      var padding = (!!ignorePadding) ? 0 : css(slidr, 'padding-left') + css(slidr, 'padding-right');
+      var margin = css(slidr, 'margin-left') + css(slidr, 'margin-right');
+      css(slidr, { width: width + padding - margin + 'px' });
       return width;
-    }
-
-    /**
-     * Validate the slides we're trying to add isn't going to conflict with existing mapping.
-     */
-    function _validateAdd(dir, slides, trans) {
-      if (!dir || !slides || slides.constructor !== Array) return false;
-      var prev = (dir === 'horizontal') ? 'left' : 'up';
-      var next = (dir === 'horizontal') ? 'right' : 'down';
-      var current;
-      _findValidSlides();
-      // For each slide we're trying to add, check it against our known mapping.
-      for (var i = 0; current = slides[i]; i++) {
-        if (!(current in _validSlides)) return false;
-        if (_slides[current]) {
-          var newPrev = slides[i-1] || null;
-          var newNext = slides[i+1] || null;
-          var existingPrev = _slides[current][prev] || null;
-          var existingNext = _slides[current][next] || null;
-          var existingPrevTransition = lookup(_trans, [current, prev]);
-          var existingNextTransition = lookup(_trans, [current, next]);
-          var previousPrev = lookup(_slides, [newNext, prev]);
-          // Are we about to override an existing mapping?
-          if ((existingNext && newNext && existingNext != newNext)
-            || (existingPrev && newPrev && existingPrev != newPrev)
-            || (previousPrev && previousPrev != current)
-            || (newPrev && existingPrevTransition && existingPrevTransition != trans)
-            || (newNext && existingNextTransition && existingNextTransition != trans)
-          ) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    /**
-     * Adds a [list] of slides we want to navigate in the horizontal/vertical direction.
-     */
-    function _add(dir, slides, opt_transition, opt_overwrite) {
-      var trans = _validateTransition(opt_transition);
-      if (!_validateAdd(dir, slides, trans) && !opt_overwrite) {
-        if (!!console && !!console.log) {
-          console.log('[Slidr] ' + dir + ' add error, conflicts with existing mapping.');
-        }
-        return false;
-      }
-      var prev = (dir === 'horizontal') ? 'left' : 'up';
-      var next = (dir === 'horizontal') ? 'right' : 'down';
-      var current;
-      // For each slide, add it to our mapping.
-      for (var i = 0; current = slides[i]; i++) {
-        if (!_slides[current]) {
-          _slides[current] = {};
-          _slides[current].target = _validSlides[current];
-        }
-        if (!!slides[i-1]) {
-          _slides[current][prev] = slides[i-1];
-          _setTransition(current, prev, trans);
-        }
-        if (!!slides[i+1]) {
-          _slides[current][next] = slides[i+1];
-          _setTransition(current, next, trans);
-        }
-        _cssInit(current, trans);
-        _start = (!_start) ? current : _start;
-      }
-      if (_started && !_displayed) _display();
-      return true;
     }
 
   };
@@ -742,5 +706,19 @@
     }
   };
 
-}(window, document));
+  /**
+   * Global API.
+   */
+  return {
+    create: function(id, opt_settings) {
+      var target = document.getElementById(id);
+      if (!target) {
+        console.warn('[Slidr] Could not find element with id: ' + id + '.');
+        return;
+      }
+      return new Slidr(target, opt_settings);
+    }
+  };
+
+}));
 
