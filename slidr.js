@@ -125,12 +125,6 @@
       apply: function(el, type, dir) {
         var trans = this.get(el, dir);
         if (trans) _cssAnimate(el, trans, type, dir);
-      },
-      // Check whether upcoming transition has overflow issues.
-      hasOverflow: function(current, next, dir) {
-        current = this.get(current, dir);
-        next = this.get(next, dir);
-        return ((dir === 'left' || dir === 'right') && (current === 'linear' || next === 'linear'));
       }
     };
 
@@ -276,15 +270,17 @@
       'cube': function(animation, rotateStart, rotateEnd, translateZ, opacityStart, opacityEnd) {
         _slidrCSS.createKeyframe(animation, {
           '0': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
+          '1': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
           '100': { 'transform': 'rotate' + rotateEnd + ' translateZ(' + translateZ + 'px)', 'opacity': opacityEnd }
         });
       },
       'fade': function(animation, opacityStart, opacityEnd) {
         _slidrCSS.createKeyframe(animation, { '0': { 'opacity': opacityStart }, '100': { 'opacity': opacityEnd } });
       },
-      'linear': function(animation, translateStart, translateEnd, opacityStart, opacityEnd) {
+      'linear': function(animation, type, translateStart, translateEnd, opacityStart, opacityEnd) {
         _slidrCSS.createKeyframe(animation, {
-          '0': { 'transform': 'translate' + translateStart, 'opacity': opacityStart },
+          '0': { 'transform': 'translate' + (type === 'in') ? translateEnd : translateStart, 'opacity': opacityStart },
+          '1': { 'transform': 'translate' + translateStart, 'opacity': opacityStart },
           '100': { 'transform': 'translate' + translateEnd, 'opacity': opacityEnd }
         });
       },
@@ -338,23 +334,23 @@
         'init': function() { return null; },
         'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
         'in': {
-          'left': function(w) { _cssHelper['linear']('slidr-linear-in-left',
+          'left': function(w) { _cssHelper['linear']('slidr-linear-in-left', 'in',
             'X(-' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['linear']('slidr-linear-in-right',
+          'right': function(w) { _cssHelper['linear']('slidr-linear-in-right', 'in',
             'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'up': function(h) { _cssHelper['linear']('slidr-linear-in-up',
+          'up': function(h) { _cssHelper['linear']('slidr-linear-in-up', 'in',
             'Y(-' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['linear']('slidr-linear-in-down',
+          'down': function(h) { _cssHelper['linear']('slidr-linear-in-down', 'in',
             'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
-          'left': function(w) { _cssHelper['linear']('slidr-linear-out-left',
+          'left': function(w) { _cssHelper['linear']('slidr-linear-out-left', 'out',
             'X(0px)', 'X(' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'right': function(w) { _cssHelper['linear']('slidr-linear-out-right',
+          'right': function(w) { _cssHelper['linear']('slidr-linear-out-right', 'out',
             'X(0px)', 'X(-' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'up': function(h) { _cssHelper['linear']('slidr-linear-out-up',
+          'up': function(h) { _cssHelper['linear']('slidr-linear-out-up', 'out',
             'Y(0px)', 'Y(' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'down': function(h) { _cssHelper['linear']('slidr-linear-out-down',
+          'down': function(h) { _cssHelper['linear']('slidr-linear-out-down', 'out',
             'Y(0px)', 'Y(-' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
         }
       },
@@ -426,7 +422,6 @@
     function _slide(dir) {
       var next = slides.get(_current, dir);
       if (_current && next) {
-        css(slidr, { overflow: transition.hasOverflow(_current, next, dir) ? 'hidden' : 'auto' });
         transition.apply(_current, 'out', dir);
         _current = next;
         transition.apply(next, 'in', dir);
@@ -457,9 +452,13 @@
       clone.setAttribute('style', 'position: absolute; opacity: 0');
       clone.appendChild(dummy);
       slidr.parentNode.insertBefore(clone, slidr);
+      var borderbox = css(clone, 'box-sizing') === 'border-box';
+      console.log("height: " + css(clone, 'height') + ", width: " + css(clone, 'width'));
+      debugger;
       var dynamic = {
-        height: css(clone, 'height') === (42 + dynamicHeight()),
-        width: css(clone, 'width') === (42 + dynamicWidth())
+        borderbox: borderbox,
+        height: css(clone, 'height') === (42 + (borderbox ? dynamicHeight() : 0)),
+        width: css(clone, 'width') === (42 + (borderbox ? dynamicWidth() : 0))
       };
       slidr.parentNode.removeChild(clone);
       return dynamic;
@@ -490,20 +489,14 @@
         if (!contains(document, slidr)) {
           clearInterval(timerId);
         } else if (css(slidr, 'visibility') === 'hidden') {
-          height = _setHeight(0);
-          width = _setWidth(0);
+          height = _setHeight(0, dynamic.borderbox);
+          width = _setWidth(0, dynamic.borderbox);
         } else if (_slides[_current]) {
           var target = _slides[_current].target;
           var newHeight = css(target, 'height');
-          var parentWidth = css(slidr.parentNode, 'width');
           var newWidth = css(target, 'width');
-          var ignorePadding = false;
-          if (parentWidth > newWidth) {
-            newWidth = parentWidth;
-            ignorePadding = true;
-          }
-          if (dynamic.height && height != newHeight) height = _setHeight(newHeight);
-          if (dynamic.width && width != newWidth) width = _setWidth(newWidth, ignorePadding);
+          if (dynamic.height && height != newHeight) height = _setHeight(newHeight, dynamic.borderbox);
+          if (dynamic.width && width != newWidth) width = _setWidth(newWidth, dynamic.borderbox);
         }
         return watchDimensions;
       })(), 250);
@@ -512,18 +505,16 @@
     /**
      * Sets the height of our Slidr container.
      */
-    function _setHeight(height) {
-      css(slidr, { height: height + dynamicHeight() + 'px' });
+    function _setHeight(height, borderbox) {
+      css(slidr, { height: height + (borderbox ? dynamicHeight() : 0) + 'px' });
       return height;
     }
 
     /**
      * Sets the width of our Slidr container.
      */
-    function _setWidth(width, ignorePadding) {
-      var padding = (!!ignorePadding) ? 0 : css(slidr, 'padding-left') + css(slidr, 'padding-right');
-      var margin = css(slidr, 'margin-left') + css(slidr, 'margin-right');
-      css(slidr, { width: width + padding - margin + 'px' });
+    function _setWidth(width, borderbox) {
+      css(slidr, { width: width + (borderbox ? dynamicWidth() : 0) + 'px' });
       return width;
     }
 
