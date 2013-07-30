@@ -10,10 +10,13 @@
 (function(root, factory) {
   // CommonJS
   if (typeof exports === 'object') module.exports = factory();
+
   // AMD module
   else if (typeof define === 'function' && define.amd) define(factory);
+
   // Browser globals
   else root.slidr = factory();
+
 } (this, function() {
   'use strict';
 
@@ -74,6 +77,7 @@
    * The Slidr constructor.
    */
   var Slidr = function(target, opt_settings) {
+
     // Reference to the Slidr element.
     var slidr = target;
 
@@ -103,17 +107,21 @@
     var _current = null;
 
     var transition = {
+
       // Available transitions.
       available: ['cube', 'fade', 'linear', 'none'],
+
       // Validates a given transition.
       validate: function(trans) {
         return (this.available.indexOf(trans) < 0
           || !lookup(_css, [trans, 'supported'])) ? settings['transition'] : trans;
       },
+
       // Get the direction transition for an element.
       get: function(el, dir) {
         return lookup(_trans, [el, dir]);
       },
+
       // Sets the direction transition for an element.
       set: function(el, dir, trans) {
         trans = this.validate(trans);
@@ -121,6 +129,7 @@
         _trans[el][dir] = trans;
         return trans;
       },
+
       // Applies a directional transition to an element entering/leaving the Slidr.
       apply: function(el, type, dir) {
         var trans = this.get(el, dir);
@@ -129,10 +138,12 @@
     };
 
     var slides = {
+
       // Get the data-slidr id.
       get: function(el, dir) {
         return lookup(_slides, [el, dir]);
       },
+
       // Finds all valid slides (direct children with 'data-slidr' attributes).
       find: function(opt_asList) {
         var valid = (opt_asList) ? [] : {};
@@ -148,6 +159,7 @@
         }
         return valid;
       },
+
       // Validate the [ids] we're trying to add doesn't conflict with existing slide assignments.
       validate: function(ids, trans, valid, prev, next) {
         if (!ids || ids.constructor !== Array) return false;
@@ -176,6 +188,7 @@
         }
         return true;
       },
+
       // Adds a [list] of ids to our Slidr.
       add: function(ids, trans, valid, prev, next) {
         var current;
@@ -200,6 +213,65 @@
       }
     };
 
+    var size = {
+
+      // Check whether width, height, and borderbox should by dynamically updated.
+      dynamic: function() {
+        var clone = slidr.cloneNode(false);
+        var dummy = document.createElement('div');
+        dummy.setAttribute('style', 'width: 42px; height: 42px;');
+        clone.setAttribute('style', 'position: absolute; opacity: 0');
+        clone.appendChild(dummy);
+        slidr.parentNode.insertBefore(clone, slidr);
+        var borderbox = css(clone, 'box-sizing') === 'border-box';
+        var dynamic = {
+          width: css(clone, 'width') - 42 === (borderbox ? this.widthPad() : 0),
+          height: css(clone, 'height') - 42 === (borderbox ? this.heightPad() : 0),
+          borderbox: borderbox
+        };
+        slidr.parentNode.removeChild(clone);
+        return dynamic;
+      },
+
+      // Grabs the Slidr width/height padding.
+      widthPad: function() {
+        return css(slidr, 'padding-left') + css(slidr, 'padding-right');
+      },
+      heightPad: function() {
+        return css(slidr, 'padding-top') + css(slidr, 'padding-bottom');
+      },
+
+      // Sets the width/height of our Slidr container.
+      setWidth: function(w, borderbox) {
+        css(slidr, { width: w + (borderbox ? this.widthPad() : 0) + 'px' }); return w;
+      },
+      setHeight: function(h, borderbox) {
+        css(slidr, { height: h + (borderbox ? this.heightPad() : 0) + 'px' }); return h;
+      },
+
+      // Monitor our Slidr and auto resize if necessary.
+      autoResize: function() {
+        var h = 0;
+        var w = 0;
+        var d = this.dynamic();
+        var timerId = setInterval((function watch() {
+          if (!contains(document, slidr)) {
+            clearInterval(timerId);
+          } else if (css(slidr, 'visibility') === 'hidden') {
+            h = size.setHeight(0, d.borderbox);
+            w = size.setWidth(0, d.borderbox);
+          } else if (_slides[_current]) {
+            var target = _slides[_current].target;
+            var height = css(target, 'height');
+            var width = css(target, 'width');
+            if (d.height && h != height) h = size.setHeight(height, d.borderbox);
+            if (d.width && w != width) w = size.setWidth(width, d.borderbox);
+          }
+          return watch;
+        })(), 250);
+      }
+    };
+
     var self = this;
 
     /**
@@ -219,10 +291,17 @@
         if (!_start) _add(settings['direction'], slides.find(true), settings['transition']);
         if (_slides[opt_start]) _start = opt_start;
         _display();
-        _autoResize();
+        size.autoResize();
         _started = true;
       }
       return self;
+    };
+
+    /**
+     * Available transitions.
+     */
+    self.transitions = function() {
+      return transition.available.slice(0);
     };
 
     /**
@@ -440,82 +519,6 @@
         _cssAnimate(_current, 'fade', 'in');
         _displayed = true;
       }
-    }
-
-    /**
-     * Check whether Slidr height or width should be dynamically set.
-     */
-    function isDynamic() {
-      var clone = slidr.cloneNode(false);
-      var dummy = document.createElement('div');
-      dummy.setAttribute('style', 'width: 42px; height: 42px;');
-      clone.setAttribute('style', 'position: absolute; opacity: 0');
-      clone.appendChild(dummy);
-      slidr.parentNode.insertBefore(clone, slidr);
-      var borderbox = css(clone, 'box-sizing') === 'border-box';
-      console.log("height: " + css(clone, 'height') + ", width: " + css(clone, 'width'));
-      debugger;
-      var dynamic = {
-        borderbox: borderbox,
-        height: css(clone, 'height') === (42 + (borderbox ? dynamicHeight() : 0)),
-        width: css(clone, 'width') === (42 + (borderbox ? dynamicWidth() : 0))
-      };
-      slidr.parentNode.removeChild(clone);
-      return dynamic;
-    }
-
-    /**
-     * Grabs slidr height padding.
-     */
-    function dynamicHeight() {
-      return css(slidr, 'padding-top') + css(slidr, 'padding-bottom');
-    }
-
-    /**
-     * Grabs slidr width padding.
-     */
-    function dynamicWidth() {
-      return css(slidr, 'padding-left') + css(slidr, 'padding-right');
-    }
-
-    /**
-     * Watch for height and width changes in the slides, propagate the change to the slidr container.
-     */
-    function _autoResize() {
-      var height = 0;
-      var width = 0;
-      var dynamic = isDynamic();
-      var timerId = setInterval((function watchDimensions() {
-        if (!contains(document, slidr)) {
-          clearInterval(timerId);
-        } else if (css(slidr, 'visibility') === 'hidden') {
-          height = _setHeight(0, dynamic.borderbox);
-          width = _setWidth(0, dynamic.borderbox);
-        } else if (_slides[_current]) {
-          var target = _slides[_current].target;
-          var newHeight = css(target, 'height');
-          var newWidth = css(target, 'width');
-          if (dynamic.height && height != newHeight) height = _setHeight(newHeight, dynamic.borderbox);
-          if (dynamic.width && width != newWidth) width = _setWidth(newWidth, dynamic.borderbox);
-        }
-        return watchDimensions;
-      })(), 250);
-    }
-
-    /**
-     * Sets the height of our Slidr container.
-     */
-    function _setHeight(height, borderbox) {
-      css(slidr, { height: height + (borderbox ? dynamicHeight() : 0) + 'px' });
-      return height;
-    }
-
-    /**
-     * Sets the width of our Slidr container.
-     */
-    function _setWidth(width, borderbox) {
-      css(slidr, { width: width + (borderbox ? dynamicWidth() : 0) + 'px' });
-      return width;
     }
 
   };
