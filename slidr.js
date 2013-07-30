@@ -125,6 +125,12 @@
       apply: function(el, type, dir) {
         var trans = this.get(el, dir);
         if (trans) _cssAnimate(el, trans, type, dir);
+      },
+      // Check whether upcoming transition has overflow issues.
+      hasOverflow: function(current, next, dir) {
+        current = this.get(current, dir);
+        next = this.get(next, dir);
+        return ((dir === 'left' || dir === 'right') && (current === 'linear' || next === 'linear'));
       }
     };
 
@@ -299,13 +305,13 @@
         'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
         'in': {
           'left': function(w) { _cssHelper['cube']('slidr-cube-in-left',
-            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['cube']('slidr-cube-in-right',
             'Y(-90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
+          'right': function(w) { _cssHelper['cube']('slidr-cube-in-right',
+            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
           'up': function(h) { _cssHelper['cube']('slidr-cube-in-up',
-            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['cube']('slidr-cube-in-down',
             'X(90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
+          'down': function(h) { _cssHelper['cube']('slidr-cube-in-down',
+            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(w) { _cssHelper['cube']('slidr-cube-out-left',
@@ -333,13 +339,13 @@
         'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
         'in': {
           'left': function(w) { _cssHelper['linear']('slidr-linear-in-left',
-            'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['linear']('slidr-linear-in-right',
             'X(-' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
+          'right': function(w) { _cssHelper['linear']('slidr-linear-in-right',
+            'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
           'up': function(h) { _cssHelper['linear']('slidr-linear-in-up',
-            'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['linear']('slidr-linear-in-down',
             'Y(-' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
+          'down': function(h) { _cssHelper['linear']('slidr-linear-in-down',
+            'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(w) { _cssHelper['linear']('slidr-linear-out-left',
@@ -415,31 +421,15 @@
     }
 
     /**
-     * Returns the opposite direction.
-     */
-    function _opposite(dir) {
-      return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left';
-    }
-
-    /**
-     * Check if a Slidr transition will have overflow issues.
-     */
-    function _hasOverflow(current, next, dir) {
-      current = transition.get(current, dir);
-      next = transition.get(next, _opposite(dir));
-      return ((dir === 'left' || dir === 'right') && (current === 'linear' || next === 'linear'));
-    }
-
-    /**
      * Transition to the next slide in direction `dir`.
      */
     function _slide(dir) {
       var next = slides.get(_current, dir);
       if (_current && next) {
-        css(slidr, { overflow: _hasOverflow(_current, next, dir) ? 'hidden' : 'auto' });
+        css(slidr, { overflow: transition.hasOverflow(_current, next, dir) ? 'hidden' : 'auto' });
         transition.apply(_current, 'out', dir);
         _current = next;
-        transition.apply(next, 'in', _opposite(dir));
+        transition.apply(next, 'in', dir);
         return true;
       }
       return false;
