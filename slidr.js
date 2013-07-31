@@ -5,7 +5,7 @@
 //
 
 /**
- * slidr - A simple Javascript library for adding slide effects. Currently under development.
+ * slidr - A Javascript library for adding slide effects. Currently under development.
  */
 (function(root, factory) {
   // CommonJS
@@ -81,7 +81,7 @@
       // Whether we've successfully called start().
       started: false,
 
-      // Whether we've successfully started to display.
+      // Whether we've successfully called slides.display().
       displayed: false,
 
       // The slide to start at.
@@ -108,14 +108,14 @@
       // Get the direction transition for an element.
       get: function(el, type, dir) {
         dir = (type === 'in') ? (dir === 'up') ? 'down': (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left' : dir;
-        return lookup(trans.map, [el, dir]);
+        return lookup(transition.map, [el, dir]);
       },
 
       // Sets the direction transition for an element.
       set: function(el, dir, trans) {
         trans = transition.validate(trans);
-        if (!trans.map[el]) trans.map[el] = {};
-        trans.map[el][dir] = trans;
+        if (!transition.map[el]) transition.map[el] = {};
+        transition.map[el][dir] = trans;
         return trans;
       },
 
@@ -330,9 +330,13 @@
           var timing = lookup(_css, [trans, 'timing']);
           if (timing) {
             var name = fx.name(trans, type, opt_dir);
-            anim['animation'] = timing(name);
             var keyframe = lookup(_css, [trans, type, opt_dir]);
-            if (keyframe) keyframe(name, css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width'));
+            if (keyframe && opt_dir) {
+              var size = css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width');
+              var opacity = _.settings['fading'] ? '0' : '1';
+              keyframe(name, size, opacity);
+            }
+            anim['animation'] = timing(name);
           }
         }
         css(target, anim);
@@ -453,24 +457,16 @@
         'supported': _slidrCSS.supports('transform', 'opacity'),
         'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
         'in': {
-          'left': function(name, w) { _cssHelper['linear'](name, 'in',
-            'X(-' + w + 'px)', 'X(0px)', _.settings['fading'] ? '0' : '1', '1'); },
-          'right': function(name, w) { _cssHelper['linear'](name, 'in',
-            'X(' + w + 'px)', 'X(0px)', _.settings['fading'] ? '0' : '1', '1'); },
-          'up': function(name, h) { _cssHelper['linear'](name, 'in',
-            'Y(-' + h + 'px)', 'Y(0px)', _.settings['fading'] ? '0' : '1', '1'); },
-          'down': function(name, h) { _cssHelper['linear'](name, 'in',
-            'Y(' + h + 'px)', 'Y(0px)', _.settings['fading'] ? '0' : '1', '1'); },
+          'left': function(name, w, op) { _cssHelper['linear'](name, 'in', 'X(-' + w + 'px)', 'X(0px)', op, '1'); },
+          'right': function(name, w, op) { _cssHelper['linear'](name, 'in', 'X(' + w + 'px)', 'X(0px)', op, '1'); },
+          'up': function(name, h, op) { _cssHelper['linear'](name, 'in', 'Y(-' + h + 'px)', 'Y(0px)', op, '1'); },
+          'down': function(name, h, op) { _cssHelper['linear'](name, 'in', 'Y(' + h + 'px)', 'Y(0px)', op, '1'); },
         },
         'out': {
-          'left': function(name, w) { _cssHelper['linear'](name, 'out',
-            'X(0px)', 'X(' + w + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
-          'right': function(name, w) { _cssHelper['linear'](name, 'out',
-            'X(0px)', 'X(-' + w + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
-          'up': function(name, h) { _cssHelper['linear'](name, 'out',
-            'Y(0px)', 'Y(' + h + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
-          'down': function(name, h) { _cssHelper['linear'](name, 'out',
-            'Y(0px)', 'Y(-' + h + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
+          'left': function(name, w, op) { _cssHelper['linear'](name, 'out', 'X(0px)', 'X(' + w + 'px)', '1', op); },
+          'right': function(name, w, op) { _cssHelper['linear'](name, 'out', 'X(0px)', 'X(-' + w + 'px)', '1', op); },
+          'up': function(name, h, op) { _cssHelper['linear'](name, 'out', 'Y(0px)', 'Y(' + h + 'px)', '1', op); },
+          'down': function(name, h, op) { _cssHelper['linear'](name, 'out', 'Y(0px)', 'Y(-' + h + 'px)', '1', op); },
         }
       },
       'cube': {
@@ -478,28 +474,19 @@
         'init': { 'backface-visibility': 'hidden', 'transform-style': 'preserve-3d' },
         'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
         'in': {
-          'left': function(name, w) { _cssHelper['cube'](name,
-            'Y(-90deg)', 'Y(0deg)', w/2, _.settings['fading'] ? '0' : '1', '1'); },
-          'right': function(name, w) { _cssHelper['cube'](name,
-            'Y(90deg)', 'Y(0deg)', w/2, _.settings['fading'] ? '0' : '1', '1'); },
-          'up': function(name, h) { _cssHelper['cube'](name,
-            'X(90deg)', 'X(0deg)', h/2, _.settings['fading'] ? '0' : '1', '1'); },
-          'down': function(name, h) { _cssHelper['cube'](name,
-            'X(-90deg)', 'X(0deg)', h/2, _.settings['fading'] ? '0' : '1', '1'); },
+          'left': function(name, w, op) { _cssHelper['cube'](name, 'Y(-90deg)', 'Y(0deg)', w/2, op, '1'); },
+          'right': function(name, w, op) { _cssHelper['cube'](name, 'Y(90deg)', 'Y(0deg)', w/2, op, '1'); },
+          'up': function(name, h, op) { _cssHelper['cube'](name, 'X(90deg)', 'X(0deg)', h/2, op, '1'); },
+          'down': function(name, h, op) { _cssHelper['cube'](name, 'X(-90deg)', 'X(0deg)', h/2, op, '1'); },
         },
         'out': {
-          'left': function(name, w) { _cssHelper['cube'](name,
-            'Y(0deg)', 'Y(90deg)', w/2, '1', _.settings['fading'] ? '0' : '1'); },
-          'right': function(name, w) { _cssHelper['cube'](name,
-            'Y(0deg)', 'Y(-90deg)', w/2, '1', _.settings['fading'] ? '0' : '1'); },
-          'up': function(name, h) { _cssHelper['cube'](name,
-            'X(0deg)', 'X(-90deg)', h/2, '1', _.settings['fading'] ? '0' : '1'); },
-          'down': function(name, h) { _cssHelper['cube'](name,
-            'X(0deg)', 'X(90deg)', h/2, '1', _.settings['fading'] ? '0' : '1'); },
+          'left': function(name, w, op) { _cssHelper['cube'](name, 'Y(0deg)', 'Y(90deg)', w/2, '1', op); },
+          'right': function(name, w, op) { _cssHelper['cube'](name, 'Y(0deg)', 'Y(-90deg)', w/2, '1', op); },
+          'up': function(name, h, op) { _cssHelper['cube'](name, 'X(0deg)', 'X(-90deg)', h/2, '1', op); },
+          'down': function(name, h, op) { _cssHelper['cube'](name, 'X(0deg)', 'X(90deg)', h/2, '1', op); },
         }
       },
     };
-
   };
 
   /**
