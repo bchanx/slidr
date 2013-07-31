@@ -76,7 +76,10 @@
   /**
    * The Slidr constructor.
    */
-  var Slidr = function(target, opt_settings) {
+  var Slidr = function(id, target, opt_settings) {
+
+    // Slidr id.
+    var slidrid = id;
 
     // Reference to the Slidr element.
     var slidr = target;
@@ -113,7 +116,7 @@
 
       // Validates a given transition.
       validate: function(trans) {
-        return (this.available.indexOf(trans) < 0
+        return (transition.available.indexOf(trans) < 0
           || !lookup(_css, [trans, 'supported'])) ? settings['transition'] : trans;
       },
 
@@ -124,7 +127,7 @@
 
       // Sets the direction transition for an element.
       set: function(el, dir, trans) {
-        trans = this.validate(trans);
+        trans = transition.validate(trans);
         if (!_trans[el]) _trans[el] = {};
         _trans[el][dir] = trans;
         return trans;
@@ -132,8 +135,8 @@
 
       // Applies a directional transition to an element entering/leaving the Slidr.
       apply: function(el, type, dir) {
-        var trans = this.get(el, dir);
-        if (trans) _cssAnimate(el, trans, type, dir);
+        var trans = transition.get(el, dir);
+        if (trans) fx.animate(el, trans, type, dir);
       }
     };
 
@@ -170,9 +173,9 @@
           if (_slides[current]) {
             var newPrev = ids[i-1] || null;
             var newNext = ids[i+1] || null;
-            var oldPrev = this.get(current, prev);
-            var oldNext = this.get(current, next);
-            var previousPrev = this.get(newNext, prev);
+            var oldPrev = transition.get(current, prev);
+            var oldNext = transition.get(current, next);
+            var previousPrev = transition.get(newNext, prev);
             var oldPrevTrans = transition.get(current, prev);
             var oldNextTrans = transition.get(current, next);
             // Are we about to override an existing mapping?
@@ -205,7 +208,7 @@
             _slides[current][next] = ids[i+1];
             transition.set(current, next, trans);
           }
-          _cssInit(current, trans);
+          fx.init(current, trans);
           _start = (!_start) ? current : _start;
         }
         if (_started && !_displayed) _display();
@@ -225,8 +228,8 @@
         slidr.parentNode.insertBefore(clone, slidr);
         var borderbox = css(clone, 'box-sizing') === 'border-box';
         var dynamic = {
-          width: css(clone, 'width') - 42 === (borderbox ? this.widthPad() : 0),
-          height: css(clone, 'height') - 42 === (borderbox ? this.heightPad() : 0),
+          width: css(clone, 'width') - 42 === (borderbox ? size.widthPad() : 0),
+          height: css(clone, 'height') - 42 === (borderbox ? size.heightPad() : 0),
           borderbox: borderbox
         };
         slidr.parentNode.removeChild(clone);
@@ -243,17 +246,17 @@
 
       // Sets the width/height of our Slidr container.
       setWidth: function(w, borderbox) {
-        css(slidr, { width: w + (borderbox ? this.widthPad() : 0) + 'px' }); return w;
+        css(slidr, { width: w + (borderbox ? size.widthPad() : 0) + 'px' }); return w;
       },
       setHeight: function(h, borderbox) {
-        css(slidr, { height: h + (borderbox ? this.heightPad() : 0) + 'px' }); return h;
+        css(slidr, { height: h + (borderbox ? size.heightPad() : 0) + 'px' }); return h;
       },
 
       // Monitor our Slidr and auto resize if necessary.
       autoResize: function() {
         var h = 0;
         var w = 0;
-        var d = this.dynamic();
+        var d = size.dynamic();
         var timerId = setInterval((function watch() {
           if (!contains(document, slidr)) {
             clearInterval(timerId);
@@ -270,6 +273,60 @@
           return watch;
         })(), 250);
       }
+    };
+
+    var fx = {
+
+      // CSS rules to apply to a slide on initialize.
+      init: function(el, trans) {
+        var init = lookup(_css, [trans, 'init']) || {};
+        var slide = _slides[el];
+        if (!slide.initialized) {
+          var display = css(slide.target, 'display');
+          extend(init, {
+            'display': (display === 'none') ? 'block' : display,
+            'visibility': 'visible',
+            'position': 'absolute',
+            'left': '50%',
+            'margin-left': '-' + css(slide.target, 'width')/2 + 'px',
+            'opacity': '0',
+            'z-index': '0',
+            'pointer-events': 'none'
+          });
+          slide.initialized = true;
+        }
+        css(slide.target, init);
+      },
+
+      // Resolve keyframe animation name.
+      name: function(trans, type, dir) {
+        var parts = ['slidr', trans, type];
+        if (trans !== 'fade') {
+          parts.unshift(slidrid);
+          parts.push(dir);
+        }
+        return parts.join('-');
+      },
+
+      // Animate an `el` with `trans` effects coming [in|out] as `type` from direction `opt_dir`.
+      animate: function(el, trans, type, opt_dir) {
+        var anim = {
+          'opacity': (type === 'in') ? '1': '0',
+          'z-index': (type === 'in') ? '1': '0',
+          'pointer-events': (type === 'in') ? 'auto': 'none'
+        };
+        var target = _slides[el].target;
+        if (lookup(_css, [trans, 'supported'])) {
+          var timing = lookup(_css, [trans, 'timing']);
+          if (timing) {
+            var name = fx.name(trans, type, opt_dir);
+            anim['animation'] = timing(name);
+            var keyframe = lookup(_css, [trans, type, opt_dir]);
+            if (keyframe) keyframe(name, css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width'));
+          }
+        }
+        css(target, anim);
+      },
     };
 
     var self = this;
@@ -342,6 +399,12 @@
       }
     };
 
+
+    var style = {
+
+    };
+
+
     /**
      * Helper functions for generating css keyframes.
      */
@@ -369,131 +432,69 @@
      * Defines our available transitions.
      */
     var _css = {
-      'cube': {
-        'supported': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
-        'init': function() { 
-          return {
-            'backface-visibility': 'hidden',
-            'transform-style': 'preserve-3d'
-          };
-        },
-        'timing': function(animation) { return animation + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
-        'in': {
-          'left': function(w) { _cssHelper['cube']('slidr-cube-in-left',
-            'Y(-90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['cube']('slidr-cube-in-right',
-            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
-          'up': function(h) { _cssHelper['cube']('slidr-cube-in-up',
-            'X(90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['cube']('slidr-cube-in-down',
-            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
-        },
-        'out': {
-          'left': function(w) { _cssHelper['cube']('slidr-cube-out-left',
-            'Y(0deg)', 'Y(90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
-          'right': function(w) { _cssHelper['cube']('slidr-cube-out-right',
-            'Y(0deg)', 'Y(-90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
-          'up': function(h) { _cssHelper['cube']('slidr-cube-out-up',
-            'X(0deg)', 'X(-90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
-          'down': function(h) { _cssHelper['cube']('slidr-cube-out-down',
-            'X(0deg)', 'X(90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
-        }
+      'none': {
+        'supported': true
       },
       'fade': {
         'supported': _slidrCSS.supports('animation', 'opacity'),
-        'init': function() {
+        'init': (function() {
           _cssHelper['fade']('slidr-fade-in', '0', '1');
           _cssHelper['fade']('slidr-fade-out', '1', '0');
           return null; 
-        },
-        'timing': function(animation) { return animation + ' 0.4s ease-out 0s'; },
+        })(),
+        'timing': function(name) { return name + ' 0.4s ease-out 0s'; },
       },
       'linear': {
         'supported': _slidrCSS.supports('transform', 'opacity'),
-        'init': function() { return null; },
-        'timing': function(animation) { return animation + ' 0.6s ease-out 0s'; },
+        'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
         'in': {
-          'left': function(w) { _cssHelper['linear']('slidr-linear-in-left', 'in',
+          'left': function(name, w) { _cssHelper['linear'](name, 'in',
             'X(-' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'right': function(w) { _cssHelper['linear']('slidr-linear-in-right', 'in',
+          'right': function(name, w) { _cssHelper['linear'](name, 'in',
             'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'up': function(h) { _cssHelper['linear']('slidr-linear-in-up', 'in',
+          'up': function(name, h) { _cssHelper['linear'](name, 'in',
             'Y(-' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
-          'down': function(h) { _cssHelper['linear']('slidr-linear-in-down', 'in',
+          'down': function(name, h) { _cssHelper['linear'](name, 'in',
             'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
-          'left': function(w) { _cssHelper['linear']('slidr-linear-out-left', 'out',
+          'left': function(name, w) { _cssHelper['linear'](name, 'out',
             'X(0px)', 'X(' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'right': function(w) { _cssHelper['linear']('slidr-linear-out-right', 'out',
+          'right': function(name, w) { _cssHelper['linear'](name, 'out',
             'X(0px)', 'X(-' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'up': function(h) { _cssHelper['linear']('slidr-linear-out-up', 'out',
+          'up': function(name, h) { _cssHelper['linear'](name, 'out',
             'Y(0px)', 'Y(' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
-          'down': function(h) { _cssHelper['linear']('slidr-linear-out-down', 'out',
+          'down': function(name, h) { _cssHelper['linear'](name, 'out',
             'Y(0px)', 'Y(-' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
         }
       },
-      'none': {
-        'supported': true,
-        'init': function() { return null; },
-        'timing': null,
-      }
+      'cube': {
+        'supported': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
+        'init': { 'backface-visibility': 'hidden', 'transform-style': 'preserve-3d' },
+        'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
+        'in': {
+          'left': function(name, w) { _cssHelper['cube'](name,
+            'Y(-90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
+          'right': function(name, w) { _cssHelper['cube'](name,
+            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
+          'up': function(name, h) { _cssHelper['cube'](name,
+            'X(90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
+          'down': function(name, h) { _cssHelper['cube'](name,
+            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
+        },
+        'out': {
+          'left': function(name, w) { _cssHelper['cube'](name,
+            'Y(0deg)', 'Y(90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
+          'right': function(name, w) { _cssHelper['cube'](name,
+            'Y(0deg)', 'Y(-90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
+          'up': function(name, h) { _cssHelper['cube'](name,
+            'X(0deg)', 'X(-90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
+          'down': function(name, h) { _cssHelper['cube'](name,
+            'X(0deg)', 'X(90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
+        }
+      },
     };
 
-    /**
-     * CSS rules to apply to a slide on initialize.
-     */
-    function _cssInit(el, trans) {
-      var init = lookup(_css, [trans, 'init'])() || {};
-      var slide = _slides[el];
-      if (!slide.initialized) {
-        var display = css(slide.target, 'display');
-        extend(init, {
-          'display': (display === 'none') ? 'block' : display,
-          'visibility': 'visible',
-          'position': 'absolute',
-          'left': '50%',
-          'margin-left': '-' + css(slide.target, 'width')/2 + 'px',
-          'opacity': '0',
-          'z-index': '0',
-          'pointer-events': 'none'
-        });
-        slide.initialized = true;
-      }
-      css(slide.target, init);
-    }
-
-    /**
-     * Resolve keyframe animation name.
-     */
-    function _cssAnimationName(trans, type, dir) {
-      var parts = ['slidr', trans, type];
-      if (trans !== 'fade' && dir) {
-        parts.push(dir);
-      }
-      return parts.join('-');
-    }
-
-    /**
-     * Animate an `el` with `trans` effects coming [in|out] as `type` from direction `dir`.
-     */
-    function _cssAnimate(el, trans, type, opt_dir) {
-      var anim = {
-        'opacity': (type === 'in') ? '1': '0',
-        'z-index': (type === 'in') ? '1': '0',
-        'pointer-events': (type === 'in') ? 'auto': 'none'
-      };
-      var target = _slides[el].target;
-      if (lookup(_css, [trans, 'supported'])) {
-        var timing = lookup(_css, [trans, 'timing']);
-        if (timing) {
-          anim['animation'] = timing(_cssAnimationName(trans, type, opt_dir));
-          var keyframe = lookup(_css, [trans, type, opt_dir]);
-          if (keyframe) keyframe(css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width'));
-        }
-      }
-      css(target, anim);
-    }
 
     /**
      * Transition to the next slide in direction `dir`.
@@ -515,8 +516,8 @@
     function _display() {
       if (!_displayed && _slides[_start]) {
         _current = _start;
-        _cssInit(_current, 'fade');
-        _cssAnimate(_current, 'fade', 'in');
+        fx.init(_current, 'fade');
+        fx.animate(_current, 'fade', 'in');
         _displayed = true;
       }
     }
@@ -700,7 +701,7 @@
         console.warn('[Slidr] Could not find element with id: ' + id + '.');
         return;
       }
-      return new Slidr(target, opt_settings);
+      return new Slidr(id, target, opt_settings);
     }
   };
 
