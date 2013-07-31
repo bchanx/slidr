@@ -416,27 +416,6 @@
         }
         css(target, anim);
       },
-
-      // Create CSS keyframes.
-      create: {
-        'fade': function(name, oStart, oEnd) {
-          _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
-        },
-        'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
-          _slidrCSS.createKeyframe(name, {
-            '0': { 'transform': 'translate' + (type === 'in') ? tEnd : tStart, 'opacity': oStart },
-            '1': { 'transform': 'translate' + tStart, 'opacity': oStart },
-            '99': { 'transform': 'translate' + tEnd, 'opacity': oEnd },
-            '100': { 'transform': 'translate' + (type === 'out') ? tStart : tEnd, 'opacity': oEnd }
-          });
-        },
-        'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
-          _slidrCSS.createKeyframe(name, {
-            '0': { 'transform': 'rotate' + rStart + ' translateZ(' + tZ + 'px)', 'opacity': oStart },
-            '100': { 'transform': 'rotate' + rEnd + ' translateZ(' + tZ + 'px)', 'opacity': oEnd }
-          });
-        },
-      },
     };
 
     var self = this;
