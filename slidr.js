@@ -345,7 +345,7 @@
           'display': (display !== 'inline-block') ? 'table' : display,
           'position': (position === 'static') ? 'relative' : position
         });
-        if (!_start) _add(settings['direction'], slides.find(true), settings['transition']);
+        if (!_start) self.add(settings['direction'], slides.find(true), settings['transition']);
         if (_slides[opt_start]) _start = opt_start;
         _display();
         size.autoResize();
@@ -397,11 +397,6 @@
         }
         return slides.add(ids, trans, valid, prev, next);
       }
-    };
-
-
-    var style = {
-
     };
 
 
