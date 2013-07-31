@@ -107,7 +107,8 @@
 
       // Get the direction transition for an element.
       get: function(el, type, dir) {
-        dir = (type === 'in') ? (dir === 'up') ? 'down': (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left' : dir;
+        dir = (type === 'in') ? (dir === 'up') ? 'down' : (dir === 'down') ? 'up' :
+          (dir === 'left') ? 'right' : 'left' : dir;
         return lookup(transition.map, [el, dir]);
       },
 
@@ -418,21 +419,21 @@
      * Helper functions for generating css keyframes.
      */
     var _cssHelper = {
-      'cube': function(animation, rotateStart, rotateEnd, translateZ, opacityStart, opacityEnd) {
-        _slidrCSS.createKeyframe(animation, {
-          '0': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
-          '1': { 'transform': 'rotate' + rotateStart + ' translateZ(' + translateZ + 'px)', 'opacity': opacityStart },
-          '100': { 'transform': 'rotate' + rotateEnd + ' translateZ(' + translateZ + 'px)', 'opacity': opacityEnd }
+      'fade': function(name, oStart, oEnd) {
+        _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+      },
+      'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
+        _slidrCSS.createKeyframe(name, {
+          '0': { 'transform': 'translate' + (type === 'in') ? tEnd : tStart, 'opacity': oStart },
+          '1': { 'transform': 'translate' + tStart, 'opacity': oStart },
+          '99': { 'transform': 'translate' + tEnd, 'opacity': oEnd },
+          '100': { 'transform': 'translate' + (type === 'out') ? tStart : tEnd, 'opacity': oEnd }
         });
       },
-      'fade': function(animation, opacityStart, opacityEnd) {
-        _slidrCSS.createKeyframe(animation, { '0': { 'opacity': opacityStart }, '100': { 'opacity': opacityEnd } });
-      },
-      'linear': function(animation, type, translateStart, translateEnd, opacityStart, opacityEnd) {
-        _slidrCSS.createKeyframe(animation, {
-          '0': { 'transform': 'translate' + (type === 'in') ? translateEnd : translateStart, 'opacity': opacityStart },
-          '1': { 'transform': 'translate' + translateStart, 'opacity': opacityStart },
-          '100': { 'transform': 'translate' + translateEnd, 'opacity': opacityEnd }
+      'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
+        _slidrCSS.createKeyframe(name, {
+          '0': { 'transform': 'rotate' + rStart + ' translateZ(' + tZ + 'px)', 'opacity': oStart },
+          '100': { 'transform': 'rotate' + rEnd + ' translateZ(' + tZ + 'px)', 'opacity': oEnd }
         });
       },
     };
