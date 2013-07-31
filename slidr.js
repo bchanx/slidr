@@ -20,9 +20,7 @@
 } (this, function() {
   'use strict';
 
-  /**
-   * Traverse [keys] in {object} to lookup a value, or null if nothing found.
-   */
+  // Traverse [keys] in {object} to lookup a value, or null if nothing found.
   function lookup(obj, keys) {
     var result = obj;
     for (var k in keys) {
@@ -32,37 +30,27 @@
     return result;
   }
 
-  /**
-   * Merge all properties from {arguments} to {obj}. Overwrites.
-   */
+  // Merge all properties from {arguments} to {obj}. Overwrites.
   function extend(obj /* arg1, arg2.. */) {
     var arg;
     for (var i = 1; arg = arguments[i]; i++) for (var a in arg) obj[a] = arg[a];
     return obj;
   }
 
-  /**
-   * Check whether node a contains node b.
-   */
+  // Check whether node a contains node b.
   function contains(a, b) {
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
-  /**
-   * Check if object is a string.
-   */
+  // Check if object is a string.
   function isString(obj) {
     return typeof obj === 'string';
   }
 
-  /**
-   * Helper for generating browser compatible CSS.
-   */
+  // Helper for generating browser compatible CSS.
   var _slidrCSS = new SlidrCSS();
 
-  /**
-   * If `props` is a string, do a css lookup. Otherwise, add css styles to `el`.
-   */
+  // If `props` is a string, do a css lookup. Otherwise, add css styles to `el`.
   function css(el, props) {
     if (isString(props)) {
       var style = window.getComputedStyle(el)[_slidrCSS.resolve(props)];
@@ -73,41 +61,41 @@
     return el;
   }
 
-  /**
-   * The Slidr constructor.
-   */
+  // The Slidr constructor.
   var Slidr = function(id, target, opt_settings) {
 
-    // Slidr id.
-    var slidrid = id;
+    var _ = {
+      // Slidr id.
+      id: id,
 
-    // Reference to the Slidr element.
-    var slidr = target;
+      // Reference to the Slidr element.
+      slidr: target,
 
-    // Settings for this Slidr.
-    var settings = extend({
-      'transition': 'none',
-      'direction': 'horizontal',
-      'fading': true
-    }, opt_settings);
+      // Settings for this Slidr.
+      settings: extend({
+        'transition': 'none',
+        'direction': 'horizontal',
+        'fading': true
+      }, opt_settings),
 
-    // A {mapping} of slides to their neighbors.
-    var _slides = {};
+      // A {mapping} of slides to their neighbors.
+      slides: {},
 
-    // A {mapping} of slides and their transition effects.
-    var _trans = {};
+      // A {mapping} of slides and their transition effects.
+      trans: {},
 
-    // Whether we've successfully called start().
-    var _started = false;
+      // Whether we've successfully called start().
+      started: false,
 
-    // Whether we've successfully started to display.
-    var _displayed = false;
+      // Whether we've successfully started to display.
+      displayed: false,
 
-    // The slide to start at.
-    var _start = null;
+      // The slide to start at.
+      start: null,
 
-    // The current slide.
-    var _current = null;
+      // The current slide.
+      current: null
+    }
 
     var transition = {
 
@@ -117,41 +105,64 @@
       // Validates a given transition.
       validate: function(trans) {
         return (transition.available.indexOf(trans) < 0
-          || !lookup(_css, [trans, 'supported'])) ? settings['transition'] : trans;
+          || !lookup(_css, [trans, 'supported'])) ? _.settings['transition'] : trans;
       },
 
       // Get the direction transition for an element.
-      get: function(el, dir) {
-        return lookup(_trans, [el, dir]);
+      get: function(el, type, dir) {
+        dir = (type === 'in') ? (dir === 'up') ? 'down': (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left' : dir;
+        return lookup(_.trans, [el, dir]);
       },
 
       // Sets the direction transition for an element.
       set: function(el, dir, trans) {
         trans = transition.validate(trans);
-        if (!_trans[el]) _trans[el] = {};
-        _trans[el][dir] = trans;
+        if (!_.trans[el]) _.trans[el] = {};
+        _.trans[el][dir] = trans;
         return trans;
       },
 
       // Applies a directional transition to an element entering/leaving the Slidr.
       apply: function(el, type, dir) {
-        var trans = transition.get(el, dir);
+        var trans = transition.get(el, type, dir);
         if (trans) fx.animate(el, trans, type, dir);
       }
     };
 
     var slides = {
 
+      // Display our starting slide.
+      display: function() {
+        if (!_.displayed && _.slides[_.start]) {
+          _.current = _.start;
+          fx.init(_.current, 'fade');
+          fx.animate(_.current, 'fade', 'in');
+          _.displayed = true;
+        }
+      },
+
+      // Transition to the next slide in direction `dir`.
+      slide: function(dir) {
+        var next = slides.get(_.current, dir);
+        if (_.current && next) {
+          transition.apply(_.current, 'out', dir);
+          _.current = next;
+          transition.apply(next, 'in', dir);
+          return true;
+        }
+        return false;
+      },
+
       // Get the data-slidr id.
       get: function(el, dir) {
-        return lookup(_slides, [el, dir]);
+        return lookup(_.slides, [el, dir]);
       },
 
       // Finds all valid slides (direct children with 'data-slidr' attributes).
       find: function(opt_asList) {
         var valid = (opt_asList) ? [] : {};
         var slide, name;
-        for (var i = 0; slide = slidr.childNodes[i]; i++) {
+        for (var i = 0; slide = _.slidr.childNodes[i]; i++) {
           if (slide.getAttribute) {
             name = slide.getAttribute('data-slidr');
             if (name) {
@@ -170,14 +181,14 @@
         // For each slide we're trying to add, check it against our known mapping.
         for (var i = 0; current = ids[i]; i++) {
           if (!(current in valid)) return false;
-          if (_slides[current]) {
+          if (_.slides[current]) {
             var newPrev = ids[i-1] || null;
             var newNext = ids[i+1] || null;
-            var oldPrev = transition.get(current, prev);
-            var oldNext = transition.get(current, next);
-            var previousPrev = transition.get(newNext, prev);
-            var oldPrevTrans = transition.get(current, prev);
-            var oldNextTrans = transition.get(current, next);
+            var oldPrev = slides.get(current, prev);
+            var oldNext = slides.get(current, next);
+            var previousPrev = slides.get(newNext, prev);
+            var oldPrevTrans = transition.get(current, 'out', prev);
+            var oldNextTrans = transition.get(current, 'out', next);
             // Are we about to override an existing mapping?
             if ((oldNext && newNext && oldNext != newNext)
               || (oldPrev && newPrev && oldPrev != newPrev)
@@ -196,22 +207,22 @@
       add: function(ids, trans, valid, prev, next) {
         var current;
         for (var i = 0; current = ids[i]; i++) {
-          if (!_slides[current]) {
-            _slides[current] = {};
-            _slides[current].target = valid[current];
+          if (!_.slides[current]) {
+            _.slides[current] = {};
+            _.slides[current].target = valid[current];
           }
           if (ids[i-1]) {
-            _slides[current][prev] = ids[i-1];
+            _.slides[current][prev] = ids[i-1];
             transition.set(current, prev, trans);
           }
           if (ids[i+1]) {
-            _slides[current][next] = ids[i+1];
+            _.slides[current][next] = ids[i+1];
             transition.set(current, next, trans);
           }
           fx.init(current, trans);
-          _start = (!_start) ? current : _start;
+          _.start = (!_.start) ? current : _.start;
         }
-        if (_started && !_displayed) _display();
+        if (_.started && !_.displayed) slides.display();
         return true;
       }
     };
@@ -220,36 +231,36 @@
 
       // Check whether width, height, and borderbox should by dynamically updated.
       dynamic: function() {
-        var clone = slidr.cloneNode(false);
+        var clone = _.slidr.cloneNode(false);
         var dummy = document.createElement('div');
         dummy.setAttribute('style', 'width: 42px; height: 42px;');
         clone.setAttribute('style', 'position: absolute; opacity: 0');
         clone.appendChild(dummy);
-        slidr.parentNode.insertBefore(clone, slidr);
+        _.slidr.parentNode.insertBefore(clone, _.slidr);
         var borderbox = css(clone, 'box-sizing') === 'border-box';
         var dynamic = {
           width: css(clone, 'width') - 42 === (borderbox ? size.widthPad() : 0),
           height: css(clone, 'height') - 42 === (borderbox ? size.heightPad() : 0),
           borderbox: borderbox
         };
-        slidr.parentNode.removeChild(clone);
+        _.slidr.parentNode.removeChild(clone);
         return dynamic;
       },
 
       // Grabs the Slidr width/height padding.
       widthPad: function() {
-        return css(slidr, 'padding-left') + css(slidr, 'padding-right');
+        return css(_.slidr, 'padding-left') + css(_.slidr, 'padding-right');
       },
       heightPad: function() {
-        return css(slidr, 'padding-top') + css(slidr, 'padding-bottom');
+        return css(_.slidr, 'padding-top') + css(_.slidr, 'padding-bottom');
       },
 
       // Sets the width/height of our Slidr container.
       setWidth: function(w, borderbox) {
-        css(slidr, { width: w + (borderbox ? size.widthPad() : 0) + 'px' }); return w;
+        css(_.slidr, { width: w + (borderbox ? size.widthPad() : 0) + 'px' }); return w;
       },
       setHeight: function(h, borderbox) {
-        css(slidr, { height: h + (borderbox ? size.heightPad() : 0) + 'px' }); return h;
+        css(_.slidr, { height: h + (borderbox ? size.heightPad() : 0) + 'px' }); return h;
       },
 
       // Monitor our Slidr and auto resize if necessary.
@@ -258,13 +269,13 @@
         var w = 0;
         var d = size.dynamic();
         var timerId = setInterval((function watch() {
-          if (!contains(document, slidr)) {
+          if (!contains(document, _.slidr)) {
             clearInterval(timerId);
-          } else if (css(slidr, 'visibility') === 'hidden') {
+          } else if (css(_.slidr, 'visibility') === 'hidden') {
             h = size.setHeight(0, d.borderbox);
             w = size.setWidth(0, d.borderbox);
-          } else if (_slides[_current]) {
-            var target = _slides[_current].target;
+          } else if (_.slides[_.current]) {
+            var target = _.slides[_.current].target;
             var height = css(target, 'height');
             var width = css(target, 'width');
             if (d.height && h != height) h = size.setHeight(height, d.borderbox);
@@ -280,7 +291,7 @@
       // CSS rules to apply to a slide on initialize.
       init: function(el, trans) {
         var init = lookup(_css, [trans, 'init']) || {};
-        var slide = _slides[el];
+        var slide = _.slides[el];
         if (!slide.initialized) {
           var display = css(slide.target, 'display');
           extend(init, {
@@ -302,7 +313,7 @@
       name: function(trans, type, dir) {
         var parts = ['slidr', trans, type];
         if (trans !== 'fade') {
-          parts.unshift(slidrid);
+          parts.unshift(_.id);
           parts.push(dir);
         }
         return parts.join('-');
@@ -315,7 +326,7 @@
           'z-index': (type === 'in') ? '1': '0',
           'pointer-events': (type === 'in') ? 'auto': 'none'
         };
-        var target = _slides[el].target;
+        var target = _.slides[el].target;
         if (lookup(_css, [trans, 'supported'])) {
           var timing = lookup(_css, [trans, 'timing']);
           if (timing) {
@@ -336,20 +347,20 @@
      * @param {string} opt_start slide to start on.
      */
     self.start = function(opt_start) {
-      if (!_started && slidr) {
-        var display = css(slidr, 'display');
-        var position = css(slidr, 'position');
-        css(slidr, {
+      if (!_.started && _.slidr) {
+        var display = css(_.slidr, 'display');
+        var position = css(_.slidr, 'position');
+        css(_.slidr, {
           'visibility': 'visible',
           'opacity': '1',
           'display': (display !== 'inline-block') ? 'table' : display,
           'position': (position === 'static') ? 'relative' : position
         });
-        if (!_start) self.add(settings['direction'], slides.find(true), settings['transition']);
-        if (_slides[opt_start]) _start = opt_start;
-        _display();
+        if (!_.start) self.add(_.settings['direction'], slides.find(true), _.settings['transition']);
+        if (_.slides[opt_start]) _.start = opt_start;
+        slides.display();
         size.autoResize();
-        _started = true;
+        _.started = true;
       }
       return self;
     };
@@ -367,7 +378,7 @@
      * @return {boolean}
      */
     self.canSlide = function(dir) {
-      return _started && !!slides.get(_current, dir);
+      return _.started && !!slides.get(_.current, dir);
     };
 
     /**
@@ -375,7 +386,7 @@
      * @param {string} dir slide 'up', 'down', 'left', or 'right'.
      */
     self.slide = function(dir) {
-      return _started && _slide(dir);
+      return _.started && slides.slide(dir);
     };
 
     /**
@@ -386,7 +397,7 @@
      * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
      */
     self.add = function(direction, ids, opt_transition, opt_overwrite) {
-      if (slidr) {
+      if (_.slidr) {
         var trans = transition.validate(opt_transition);
         var valid = slides.find();
         var prev = (direction === 'horizontal' || direction === 'h') ? 'left' : 'up';
@@ -444,23 +455,23 @@
         'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
         'in': {
           'left': function(name, w) { _cssHelper['linear'](name, 'in',
-            'X(-' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
+            'X(-' + w + 'px)', 'X(0px)', _.settings['fading'] ? '0' : '1', '1'); },
           'right': function(name, w) { _cssHelper['linear'](name, 'in',
-            'X(' + w + 'px)', 'X(0px)', settings['fading'] ? '0' : '1', '1'); },
+            'X(' + w + 'px)', 'X(0px)', _.settings['fading'] ? '0' : '1', '1'); },
           'up': function(name, h) { _cssHelper['linear'](name, 'in',
-            'Y(-' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
+            'Y(-' + h + 'px)', 'Y(0px)', _.settings['fading'] ? '0' : '1', '1'); },
           'down': function(name, h) { _cssHelper['linear'](name, 'in',
-            'Y(' + h + 'px)', 'Y(0px)', settings['fading'] ? '0' : '1', '1'); },
+            'Y(' + h + 'px)', 'Y(0px)', _.settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(name, w) { _cssHelper['linear'](name, 'out',
-            'X(0px)', 'X(' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
+            'X(0px)', 'X(' + w + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
           'right': function(name, w) { _cssHelper['linear'](name, 'out',
-            'X(0px)', 'X(-' + w + 'px)', '1', settings['fading'] ? '0' : '1'); },
+            'X(0px)', 'X(-' + w + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
           'up': function(name, h) { _cssHelper['linear'](name, 'out',
-            'Y(0px)', 'Y(' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
+            'Y(0px)', 'Y(' + h + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
           'down': function(name, h) { _cssHelper['linear'](name, 'out',
-            'Y(0px)', 'Y(-' + h + 'px)', '1', settings['fading'] ? '0' : '1'); },
+            'Y(0px)', 'Y(-' + h + 'px)', '1', _.settings['fading'] ? '0' : '1'); },
         }
       },
       'cube': {
@@ -469,53 +480,26 @@
         'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
         'in': {
           'left': function(name, w) { _cssHelper['cube'](name,
-            'Y(-90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
+            'Y(-90deg)', 'Y(0deg)', w/2, _.settings['fading'] ? '0' : '1', '1'); },
           'right': function(name, w) { _cssHelper['cube'](name,
-            'Y(90deg)', 'Y(0deg)', w/2, settings['fading'] ? '0' : '1', '1'); },
+            'Y(90deg)', 'Y(0deg)', w/2, _.settings['fading'] ? '0' : '1', '1'); },
           'up': function(name, h) { _cssHelper['cube'](name,
-            'X(90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
+            'X(90deg)', 'X(0deg)', h/2, _.settings['fading'] ? '0' : '1', '1'); },
           'down': function(name, h) { _cssHelper['cube'](name,
-            'X(-90deg)', 'X(0deg)', h/2, settings['fading'] ? '0' : '1', '1'); },
+            'X(-90deg)', 'X(0deg)', h/2, _.settings['fading'] ? '0' : '1', '1'); },
         },
         'out': {
           'left': function(name, w) { _cssHelper['cube'](name,
-            'Y(0deg)', 'Y(90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
+            'Y(0deg)', 'Y(90deg)', w/2, '1', _.settings['fading'] ? '0' : '1'); },
           'right': function(name, w) { _cssHelper['cube'](name,
-            'Y(0deg)', 'Y(-90deg)', w/2, '1', settings['fading'] ? '0' : '1'); },
+            'Y(0deg)', 'Y(-90deg)', w/2, '1', _.settings['fading'] ? '0' : '1'); },
           'up': function(name, h) { _cssHelper['cube'](name,
-            'X(0deg)', 'X(-90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
+            'X(0deg)', 'X(-90deg)', h/2, '1', _.settings['fading'] ? '0' : '1'); },
           'down': function(name, h) { _cssHelper['cube'](name,
-            'X(0deg)', 'X(90deg)', h/2, '1', settings['fading'] ? '0' : '1'); },
+            'X(0deg)', 'X(90deg)', h/2, '1', _.settings['fading'] ? '0' : '1'); },
         }
       },
     };
-
-
-    /**
-     * Transition to the next slide in direction `dir`.
-     */
-    function _slide(dir) {
-      var next = slides.get(_current, dir);
-      if (_current && next) {
-        transition.apply(_current, 'out', dir);
-        _current = next;
-        transition.apply(next, 'in', dir);
-        return true;
-      }
-      return false;
-    }
-
-    /**
-     * Display our starting slide.
-     */
-    function _display() {
-      if (!_displayed && _slides[_start]) {
-        _current = _start;
-        fx.init(_current, 'fade');
-        fx.animate(_current, 'fade', 'in');
-        _displayed = true;
-      }
-    }
 
   };
 
