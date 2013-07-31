@@ -27,7 +27,7 @@
       if (!result.hasOwnProperty(keys[k])) return null;
       result = result[keys[k]];
     }
-    return result;
+    return (result === obj) ? null : result;
   }
 
   // Merge all properties from {arguments} to {obj}. Overwrites.
@@ -78,12 +78,6 @@
         'fading': true
       }, opt_settings),
 
-      // A {mapping} of slides to their neighbors.
-      slides: {},
-
-      // A {mapping} of slides and their transition effects.
-      trans: {},
-
       // Whether we've successfully called start().
       started: false,
 
@@ -99,6 +93,9 @@
 
     var transition = {
 
+      // A {mapping} of slides and their transition effects.
+      map: {},
+
       // Available transitions.
       available: ['cube', 'fade', 'linear', 'none'],
 
@@ -111,14 +108,14 @@
       // Get the direction transition for an element.
       get: function(el, type, dir) {
         dir = (type === 'in') ? (dir === 'up') ? 'down': (dir === 'down') ? 'up' : (dir === 'left') ? 'right' : 'left' : dir;
-        return lookup(_.trans, [el, dir]);
+        return lookup(trans.map, [el, dir]);
       },
 
       // Sets the direction transition for an element.
       set: function(el, dir, trans) {
         trans = transition.validate(trans);
-        if (!_.trans[el]) _.trans[el] = {};
-        _.trans[el][dir] = trans;
+        if (!trans.map[el]) trans.map[el] = {};
+        trans.map[el][dir] = trans;
         return trans;
       },
 
@@ -131,9 +128,17 @@
 
     var slides = {
 
+      // A {mapping} of slides to their neighbors.
+      map: {},
+
+      // Get slide metadata.
+      get: function() {
+        return lookup(slides.map, arguments);
+      },
+
       // Display our starting slide.
       display: function() {
-        if (!_.displayed && _.slides[_.start]) {
+        if (!_.displayed && slides.get(_.start)) {
           _.current = _.start;
           fx.init(_.current, 'fade');
           fx.animate(_.current, 'fade', 'in');
@@ -151,11 +156,6 @@
           return true;
         }
         return false;
-      },
-
-      // Get the data-slidr id.
-      get: function(el, dir) {
-        return lookup(_.slides, [el, dir]);
       },
 
       // Finds all valid slides (direct children with 'data-slidr' attributes).
@@ -181,7 +181,7 @@
         // For each slide we're trying to add, check it against our known mapping.
         for (var i = 0; current = ids[i]; i++) {
           if (!(current in valid)) return false;
-          if (_.slides[current]) {
+          if (slides.get(current)) {
             var newPrev = ids[i-1] || null;
             var newNext = ids[i+1] || null;
             var oldPrev = slides.get(current, prev);
@@ -207,16 +207,15 @@
       add: function(ids, trans, valid, prev, next) {
         var current;
         for (var i = 0; current = ids[i]; i++) {
-          if (!_.slides[current]) {
-            _.slides[current] = {};
-            _.slides[current].target = valid[current];
-          }
+          slides.map[current] = slides.map[current] || {};
+          var s = slides.get(current);
+          s.target = valid[current];
           if (ids[i-1]) {
-            _.slides[current][prev] = ids[i-1];
+            s[prev] = ids[i-1];
             transition.set(current, prev, trans);
           }
           if (ids[i+1]) {
-            _.slides[current][next] = ids[i+1];
+            s[next] = ids[i+1];
             transition.set(current, next, trans);
           }
           fx.init(current, trans);
@@ -274,8 +273,8 @@
           } else if (css(_.slidr, 'visibility') === 'hidden') {
             h = size.setHeight(0, d.borderbox);
             w = size.setWidth(0, d.borderbox);
-          } else if (_.slides[_.current]) {
-            var target = _.slides[_.current].target;
+          } else if (slides.get(_.current)) {
+            var target = slides.get(_.current).target;
             var height = css(target, 'height');
             var width = css(target, 'width');
             if (d.height && h != height) h = size.setHeight(height, d.borderbox);
@@ -291,22 +290,22 @@
       // CSS rules to apply to a slide on initialize.
       init: function(el, trans) {
         var init = lookup(_css, [trans, 'init']) || {};
-        var slide = _.slides[el];
-        if (!slide.initialized) {
-          var display = css(slide.target, 'display');
+        var s = slides.get(el);
+        if (!s.initialized) {
+          var display = css(s.target, 'display');
           extend(init, {
             'display': (display === 'none') ? 'block' : display,
             'visibility': 'visible',
             'position': 'absolute',
             'left': '50%',
-            'margin-left': '-' + css(slide.target, 'width')/2 + 'px',
+            'margin-left': '-' + css(s.target, 'width')/2 + 'px',
             'opacity': '0',
             'z-index': '0',
             'pointer-events': 'none'
           });
-          slide.initialized = true;
+          s.initialized = true;
         }
-        css(slide.target, init);
+        css(s.target, init);
       },
 
       // Resolve keyframe animation name.
@@ -326,7 +325,7 @@
           'z-index': (type === 'in') ? '1': '0',
           'pointer-events': (type === 'in') ? 'auto': 'none'
         };
-        var target = _.slides[el].target;
+        var target = slides.get(el).target;
         if (lookup(_css, [trans, 'supported'])) {
           var timing = lookup(_css, [trans, 'timing']);
           if (timing) {
@@ -357,7 +356,7 @@
           'position': (position === 'static') ? 'relative' : position
         });
         if (!_.start) self.add(_.settings['direction'], slides.find(true), _.settings['transition']);
-        if (_.slides[opt_start]) _.start = opt_start;
+        if (slides.get(opt_start)) _.start = opt_start;
         slides.display();
         size.autoResize();
         _.started = true;
