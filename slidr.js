@@ -68,10 +68,13 @@
     },
     'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
       _slidrCSS.createKeyframe(name, {
-        '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)', 'opacity': oStart },
-        '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
-        '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
-        '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)', 'opacity': oEnd }
+        '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)',
+          'opacity': (type === 'in' ? '0' : oStart) },
+        '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': (type === 'in' ? '0' : oStart) },
+        '2': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
+        '98': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
+        '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': type === 'out' ? '0' : oEnd },
+        '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)' }
       });
     },
     'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
@@ -152,7 +155,8 @@
       settings: extend({
         'transition': 'none',
         'direction': 'horizontal',
-        'fading': true
+        'fading': true,
+        'clipping': false
       }, opt_settings),
 
       // Whether we've successfully called start().
@@ -418,77 +422,86 @@
       },
     };
 
-    var self = this;
+    var api = {
 
-    /**
-     * Start the Slidr!
-     * @param {string} opt_start slide to start on.
-     */
-    self.start = function(opt_start) {
-      if (!_.started && _.slidr) {
-        var display = css(_.slidr, 'display');
-        var position = css(_.slidr, 'position');
-        css(_.slidr, {
-          'visibility': 'visible',
-          'opacity': '1',
-          'display': (display !== 'inline-block') ? 'table' : display,
-          'position': (position === 'static') ? 'relative' : position
-        });
-        if (!_.start) self.add(_.settings['direction'], slides.find(true), _.settings['transition']);
-        if (slides.get(opt_start)) _.start = opt_start;
-        slides.display();
-        size.autoResize();
-        _.started = true;
-      }
-      return self;
-    };
-
-    /**
-     * Available transitions.
-     */
-    self.transitions = function() {
-      return transition.available.slice(0);
-    };
-
-    /**
-     * Check whether we can slide.
-     * @param {string} dir 'up', 'down', 'left' or 'right'.
-     * @return {boolean}
-     */
-    self.canSlide = function(dir) {
-      return _.started && !!slides.get(_.current, dir);
-    };
-
-    /**
-     * Slide.
-     * @param {string} dir slide 'up', 'down', 'left', or 'right'.
-     */
-    self.slide = function(dir) {
-      return _.started && slides.slide(dir);
-    };
-
-    /**
-     * Adds a set of slides.
-     * @param {string} direction `horizontal` or `vertical`.
-     * @param {Array} ids A list of `data-slidr` id's to add to Slidr. Slides must be children elements of the Slidr.
-     * @param {string?} opt_transition The transition to apply between the slides. Defaults to settings.
-     * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
-     */
-    self.add = function(direction, ids, opt_transition, opt_overwrite) {
-      if (_.slidr) {
-        var trans = transition.validate(opt_transition);
-        var valid = slides.find();
-        var prev = (direction === 'horizontal' || direction === 'h') ? 'left' : 'up';
-        var next = (direction === 'horizontal' || direction === 'h') ? 'right' : 'down';
-        if (!slides.validate(ids, trans, valid, prev, next) && !opt_overwrite) {
-          console.warn('[Slidr] Error adding [' + direction + '] slides.');
-          return false;
+      /**
+       * Start the Slidr! Automatically finds slides to create if nothing was added prior to calling start().
+       * @param {string} opt_start `data-slidr` id to start on.
+       * @return {this}
+       */
+      start: function(opt_start) {
+        if (!_.started && _.slidr) {
+          var display = css(_.slidr, 'display');
+          var position = css(_.slidr, 'position');
+          var overflow = css(_.slidr, 'overflow');
+          css(_.slidr, {
+            'visibility': 'visible',
+            'opacity': '1',
+            'display': (display !== 'inline-block') ? 'table' : display,
+            'position': (position === 'static') ? 'relative' : position,
+            'overflow': (_.settings['clipping']) ? 'hidden': overflow
+          });
+          if (!_.start) api.add(_.settings['direction'], slides.find(true), _.settings['transition']);
+          if (slides.get(opt_start)) _.start = opt_start;
+          slides.display();
+          size.autoResize();
+          _.started = true;
         }
-        return slides.add(ids, trans, valid, prev, next);
-      }
+        return this;
+      },
+
+      /**
+       * Available transitions.
+       * @return {Array} of transitions.
+       */
+      transitions: function() {
+        return transition.available.slice(0);
+      },
+
+      /**
+       * Check whether we can slide.
+       * @param {string} dir 'up', 'down', 'left' or 'right'.
+       * @return {boolean}
+       */
+      canSlide: function(dir) {
+        return _.started && !!slides.get(_.current, dir);
+      },
+
+      /**
+       * Slide.
+       * @param {string} dir slide 'up', 'down', 'left', or 'right'.
+       * @return {this}
+       */
+      slide: function(dir) {
+        if (_.started) slides.slide(dir);
+        return this;
+      },
+
+      /**
+       * Adds a set of slides.
+       * @param {string} direction `horizontal` or `vertical`.
+       * @param {Array} ids A list of `data-slidr` id's to add to Slidr. Slides must be children elements of the Slidr.
+       * @param {string?} opt_transition The transition to apply between the slides. Defaults to settings.
+       * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
+       * @return {this}
+       */
+      add: function(direction, ids, opt_transition, opt_overwrite) {
+        if (_.slidr) {
+          var trans = transition.validate(opt_transition);
+          var valid = slides.find();
+          var prev = (direction === 'horizontal' || direction === 'h') ? 'left' : 'up';
+          var next = (direction === 'horizontal' || direction === 'h') ? 'right' : 'down';
+          if (!slides.validate(ids, trans, valid, prev, next) && !opt_overwrite) {
+            console.warn('[Slidr] Error adding [' + direction + '] slides.');
+          } else {
+            slides.add(ids, trans, valid, prev, next);
+          }
+        }
+        return this;
+      },
     };
 
-
+    return api;
   };
 
   /**
