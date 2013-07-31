@@ -50,7 +50,7 @@
   // Helper for generating browser compatible CSS.
   var _slidrCSS = new SlidrCSS();
 
-  // If `props` is a string, do a css lookup. Otherwise, add css styles to `el`.
+  // If `props` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, props) {
     if (isString(props)) {
       var style = window.getComputedStyle(el)[_slidrCSS.resolve(props)];
@@ -60,6 +60,83 @@
     for (var p in props) if (_slidrCSS.resolve(p)) el.style[_slidrCSS.resolve(p)] = props[p];
     return el;
   }
+
+  // Create CSS keyframes.
+  var keyframe = {
+    'fade': function(name, oStart, oEnd) {
+      _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+    },
+    'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
+      _slidrCSS.createKeyframe(name, {
+        '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)', 'opacity': oStart },
+        '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
+        '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
+        '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)', 'opacity': oEnd }
+      });
+    },
+    'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
+      _slidrCSS.createKeyframe(name, {
+        '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart },
+        '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd }
+      });
+    }
+  };
+
+  // Properties defining animation support.
+  var supported = {
+    'none': true,
+    'fade': _slidrCSS.supports('animation', 'opacity'),
+    'linear': _slidrCSS.supports('transform', 'opacity'),
+    'cube': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
+  };
+
+  // Timing functions for our animations.
+  var timing = {
+    'fade': function(name) { return name + ' 0.4s ease-out 0s'; },
+    'linear': function(name) { return name + ' 0.6s ease-out 0s'; },
+    'cube': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
+  };
+
+  // Defines our slide animations.
+  var animation = {
+    'fade': {
+      'init': (function() {
+        keyframe['fade']('slidr-fade-in', '0', '1');
+        keyframe['fade']('slidr-fade-out', '1', '0');
+        return null; 
+      })(),
+    },
+    'linear': {
+      'in': {
+        'left': function(name, w, o) { keyframe['linear'](name, 'in', 'X(-' + w, 'X(0', o, '1'); },
+        'right': function(name, w, o) { keyframe['linear'](name, 'in', 'X(' + w, 'X(0', o, '1'); },
+        'up': function(name, h, o) { keyframe['linear'](name, 'in', 'Y(-' + h, 'Y(0', o, '1'); },
+        'down': function(name, h, o) { keyframe['linear'](name, 'in', 'Y(' + h, 'Y(0', o, '1'); },
+      },
+      'out': {
+        'left': function(name, w, o) { keyframe['linear'](name, 'out', 'X(0', 'X(' + w, '1', o); },
+        'right': function(name, w, o) { keyframe['linear'](name, 'out', 'X(0', 'X(-' + w, '1', o); },
+        'up': function(name, h, o) { keyframe['linear'](name, 'out', 'Y(0', 'Y(' + h, '1', o); },
+        'down': function(name, h, o) { keyframe['linear'](name, 'out', 'Y(0', 'Y(-' + h, '1', o); },
+      }
+    },
+    'cube': {
+      'init': { 'backface-visibility': 'hidden', 'transform-style': 'preserve-3d' },
+      'in': {
+        'left': function(name, w, o) { keyframe['cube'](name, 'Y(-90', 'Y(0', w/2, o, '1'); },
+        'right': function(name, w, o) { keyframe['cube'](name, 'Y(90', 'Y(0', w/2, o, '1'); },
+        'up': function(name, h, o) { keyframe['cube'](name, 'X(90', 'X(0', h/2, o, '1'); },
+        'down': function(name, h, o) { keyframe['cube'](name, 'X(-90', 'X(0', h/2, o, '1'); },
+      },
+      'out': {
+        'left': function(name, w, o) { keyframe['cube'](name, 'Y(0', 'Y(90', w/2, '1', o); },
+        'right': function(name, w, o) { keyframe['cube'](name, 'Y(0', 'Y(-90', w/2, '1', o); },
+        'up': function(name, h, o) { keyframe['cube'](name, 'X(0', 'X(-90', h/2, '1', o); },
+        'down': function(name, h, o) { keyframe['cube'](name, 'X(0', 'X(90', h/2, '1', o); },
+      }
+    },
+  };
+
 
   // The Slidr constructor.
   var Slidr = function(id, target, opt_settings) {
@@ -102,7 +179,7 @@
       // Validates a given transition.
       validate: function(trans) {
         return (transition.available.indexOf(trans) < 0
-          || !lookup(_css, [trans, 'supported'])) ? _.settings['transition'] : trans;
+          || !supported[trans]) ? _.settings['transition'] : trans;
       },
 
       // Get the direction transition for an element.
@@ -290,7 +367,7 @@
 
       // CSS rules to apply to a slide on initialize.
       init: function(el, trans) {
-        var init = lookup(_css, [trans, 'init']) || {};
+        var init = lookup(animation, [trans, 'init']) || {};
         var s = slides.get(el);
         if (!s.initialized) {
           var display = css(s.target, 'display');
@@ -327,20 +404,38 @@
           'pointer-events': (type === 'in') ? 'auto': 'none'
         };
         var target = slides.get(el).target;
-        if (lookup(_css, [trans, 'supported'])) {
-          var timing = lookup(_css, [trans, 'timing']);
-          if (timing) {
-            var name = fx.name(trans, type, opt_dir);
-            var keyframe = lookup(_css, [trans, type, opt_dir]);
-            if (keyframe && opt_dir) {
-              var size = css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width');
-              var opacity = _.settings['fading'] ? '0' : '1';
-              keyframe(name, size, opacity);
-            }
-            anim['animation'] = timing(name);
+        if (supported[trans] && timing[trans]) {
+          var name = fx.name(trans, type, opt_dir);
+          var keyframe = lookup(animation, [trans, type, opt_dir]);
+          if (keyframe && opt_dir) {
+            var size = css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width');
+            var opacity = _.settings['fading'] ? '0' : '1';
+            keyframe(name, size, opacity);
           }
+          anim['animation'] = timing[trans](name);
         }
         css(target, anim);
+      },
+
+      // Create CSS keyframes.
+      create: {
+        'fade': function(name, oStart, oEnd) {
+          _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+        },
+        'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
+          _slidrCSS.createKeyframe(name, {
+            '0': { 'transform': 'translate' + (type === 'in') ? tEnd : tStart, 'opacity': oStart },
+            '1': { 'transform': 'translate' + tStart, 'opacity': oStart },
+            '99': { 'transform': 'translate' + tEnd, 'opacity': oEnd },
+            '100': { 'transform': 'translate' + (type === 'out') ? tStart : tEnd, 'opacity': oEnd }
+          });
+        },
+        'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
+          _slidrCSS.createKeyframe(name, {
+            '0': { 'transform': 'rotate' + rStart + ' translateZ(' + tZ + 'px)', 'opacity': oStart },
+            '100': { 'transform': 'rotate' + rEnd + ' translateZ(' + tZ + 'px)', 'opacity': oEnd }
+          });
+        },
       },
     };
 
@@ -415,79 +510,6 @@
     };
 
 
-    /**
-     * Helper functions for generating css keyframes.
-     */
-    var _cssHelper = {
-      'fade': function(name, oStart, oEnd) {
-        _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
-      },
-      'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
-        _slidrCSS.createKeyframe(name, {
-          '0': { 'transform': 'translate' + (type === 'in') ? tEnd : tStart, 'opacity': oStart },
-          '1': { 'transform': 'translate' + tStart, 'opacity': oStart },
-          '99': { 'transform': 'translate' + tEnd, 'opacity': oEnd },
-          '100': { 'transform': 'translate' + (type === 'out') ? tStart : tEnd, 'opacity': oEnd }
-        });
-      },
-      'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
-        _slidrCSS.createKeyframe(name, {
-          '0': { 'transform': 'rotate' + rStart + ' translateZ(' + tZ + 'px)', 'opacity': oStart },
-          '100': { 'transform': 'rotate' + rEnd + ' translateZ(' + tZ + 'px)', 'opacity': oEnd }
-        });
-      },
-    };
-
-    /**
-     * Defines our available transitions.
-     */
-    var _css = {
-      'none': {
-        'supported': true
-      },
-      'fade': {
-        'supported': _slidrCSS.supports('animation', 'opacity'),
-        'init': (function() {
-          _cssHelper['fade']('slidr-fade-in', '0', '1');
-          _cssHelper['fade']('slidr-fade-out', '1', '0');
-          return null; 
-        })(),
-        'timing': function(name) { return name + ' 0.4s ease-out 0s'; },
-      },
-      'linear': {
-        'supported': _slidrCSS.supports('transform', 'opacity'),
-        'timing': function(name) { return name + ' 0.6s ease-out 0s'; },
-        'in': {
-          'left': function(name, w, op) { _cssHelper['linear'](name, 'in', 'X(-' + w + 'px)', 'X(0px)', op, '1'); },
-          'right': function(name, w, op) { _cssHelper['linear'](name, 'in', 'X(' + w + 'px)', 'X(0px)', op, '1'); },
-          'up': function(name, h, op) { _cssHelper['linear'](name, 'in', 'Y(-' + h + 'px)', 'Y(0px)', op, '1'); },
-          'down': function(name, h, op) { _cssHelper['linear'](name, 'in', 'Y(' + h + 'px)', 'Y(0px)', op, '1'); },
-        },
-        'out': {
-          'left': function(name, w, op) { _cssHelper['linear'](name, 'out', 'X(0px)', 'X(' + w + 'px)', '1', op); },
-          'right': function(name, w, op) { _cssHelper['linear'](name, 'out', 'X(0px)', 'X(-' + w + 'px)', '1', op); },
-          'up': function(name, h, op) { _cssHelper['linear'](name, 'out', 'Y(0px)', 'Y(' + h + 'px)', '1', op); },
-          'down': function(name, h, op) { _cssHelper['linear'](name, 'out', 'Y(0px)', 'Y(-' + h + 'px)', '1', op); },
-        }
-      },
-      'cube': {
-        'supported': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
-        'init': { 'backface-visibility': 'hidden', 'transform-style': 'preserve-3d' },
-        'timing': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
-        'in': {
-          'left': function(name, w, op) { _cssHelper['cube'](name, 'Y(-90deg)', 'Y(0deg)', w/2, op, '1'); },
-          'right': function(name, w, op) { _cssHelper['cube'](name, 'Y(90deg)', 'Y(0deg)', w/2, op, '1'); },
-          'up': function(name, h, op) { _cssHelper['cube'](name, 'X(90deg)', 'X(0deg)', h/2, op, '1'); },
-          'down': function(name, h, op) { _cssHelper['cube'](name, 'X(-90deg)', 'X(0deg)', h/2, op, '1'); },
-        },
-        'out': {
-          'left': function(name, w, op) { _cssHelper['cube'](name, 'Y(0deg)', 'Y(90deg)', w/2, '1', op); },
-          'right': function(name, w, op) { _cssHelper['cube'](name, 'Y(0deg)', 'Y(-90deg)', w/2, '1', op); },
-          'up': function(name, h, op) { _cssHelper['cube'](name, 'X(0deg)', 'X(-90deg)', h/2, '1', op); },
-          'down': function(name, h, op) { _cssHelper['cube'](name, 'X(0deg)', 'X(90deg)', h/2, '1', op); },
-        }
-      },
-    };
   };
 
   /**
@@ -629,7 +651,7 @@
     }
 
     /**
-     * Given a css property and a optional dom prefix, tranlate it into a DOM document representation.
+     * Given a CSS property and a optional dom prefix, tranlate it into a DOM document representation.
      */
     function _normalize(prop, opt_domPrefix) {
       prop = prop.split('-');
@@ -640,7 +662,7 @@
     }
 
     /**
-     * Given a css property, retrieves the DOM prefix if applicable.
+     * Given a CSS property, retrieves the DOM prefix if applicable.
      */
     function _getDOMPrefix(cssProperty) {
       if (_domPrefix === null && isString(cssProperty)) {
