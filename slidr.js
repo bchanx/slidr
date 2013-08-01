@@ -479,7 +479,7 @@
 
       /**
        * Adds a set of slides.
-       * @param {string} direction `horizontal` or `vertical`.
+       * @param {string} direction `horizontal || h` or `vertical || v`.
        * @param {Array} ids A list of `data-slidr` id's to add to Slidr. Slides must be children elements of the Slidr.
        * @param {string?} opt_transition The transition to apply between the slides. Defaults to settings.
        * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
