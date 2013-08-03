@@ -41,32 +41,96 @@
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
-  // Check if object is a string.
-  function isString(obj) {
-    return typeof obj === 'string';
+  // Slidr CSS style sheet.
+  var styleSheet = (function() {
+    var el = document.createElement('style');
+    el.type = 'text/css';
+    document.head.appendChild(el);
+    return el.sheet || el.styleSheet;
+  }());
+
+  // Adds a CSS rule to our Slidr stylesheet.
+  function addCSSRule(name, rule) {
+    for (var r = 0, cssRule; cssRule = styleSheet.cssRules[r]; r++) {
+      if (cssRule.name == name) {
+        styleSheet.deleteRule(r);
+        break;
+      }
+    }
+    styleSheet.insertRule(rule, styleSheet.cssRules.length);
   }
 
-  // Helper for generating browser compatible CSS.
-  var _slidrCSS = new SlidrCSS();
+  // Reference to the document style element.
+  var styleEl = document.getElementsByTagName('html')[0]['style'];
 
-  // If `props` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
-  function css(el, props) {
-    if (isString(props)) {
-      var style = window.getComputedStyle(el)[_slidrCSS.resolve(props)];
+  // Vendor prefixes.
+  var prefixes = ['webkit', 'Moz', 'ms', 'O'];
+
+  // CSS property cache.
+  var props = {};
+
+  // Returns the browser supported property name, or null.
+  function vendor(prop, forCSS) {
+    if (!(prop in props)) {
+      var parts = prop.split('-');
+      for (var i = 0, p; p = parts[i]; i++) parts[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
+      var domprop = parts.join('');
+      domprop = domprop[0].toLowerCase() + domprop.slice(1);
+      if (styleEl[domprop] !== undefined) {
+        props[prop] = { css: prop, dom: domprop };
+      } else {
+        domprop = parts.join('');
+        for (i = 0; i < prefixes.length; i++) {
+          if (styleEl[prefixes[i] + domprop] !== undefined) {
+            props[prop] = { css: '-' + prefixes[i].toLowerCase() + '-' + prop, dom: prefixes[i] + domprop };
+          }
+        }
+      }
+      if (!props[prop]) props[prop] = null;
+    }
+    return (props[prop] !== null) ? (forCSS) ? props[prop].css : props[prop].dom : null;
+  }
+
+  // Check whether all given css properties are supported in the browser.
+  function supports(/* prop1, prop2... */) {
+    for (var i = 0, prop; prop = arguments[i]; i++) if (!vendor(prop)) return false;
+    return true;
+  };
+
+  // Creates a keyframe animation rule.
+  function createKeyframe(name, rules) {
+    var animation = vendor('animation', true);
+    if (animation) {
+      var prefix = (/^-[a-z]+-/gi.test(animation)) ? /^-[a-z]+-/gi.exec(animation)[0] : '';
+      var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
+      for (var r in rules) {
+        rule.push(r + '% {');
+        for (var p in rules[r]) rule.push(vendor(p, true) + ': ' + rules[r][p] + ';');
+        rule.push('}');
+      }
+      rule.push('}');
+      addCSSRule(name, rule.join(' '));
+    }
+  };
+
+  // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
+  function css(el, prop) {
+    if (typeof prop === 'string') {
+      var style = window.getComputedStyle(el)[vendor(prop)];
       return (style) ? (style.slice(-2) === 'px' && style.indexOf('px') == style.length - 2) ? 
         parseInt(style.slice(0, -2)) : style : 'none';
     }
-    for (var p in props) if (_slidrCSS.resolve(p)) el.style[_slidrCSS.resolve(p)] = props[p];
+    for (var p in prop) if (vendor(p)) el.style[vendor(p)] = prop[p];
     return el;
   }
 
   // Create CSS keyframes.
   var keyframe = {
     'fade': function(name, oStart, oEnd) {
-      _slidrCSS.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+      createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
     },
     'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
-      _slidrCSS.createKeyframe(name, {
+      createKeyframe(name, {
         '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)',
           'opacity': (type === 'in' ? '0' : oStart) },
         '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': (type === 'in' ? '0' : oStart) },
@@ -77,7 +141,7 @@
       });
     },
     'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
-      _slidrCSS.createKeyframe(name, {
+      createKeyframe(name, {
         '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart },
         '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd }
       });
@@ -87,9 +151,9 @@
   // Properties defining animation support.
   var supported = {
     'none': true,
-    'fade': _slidrCSS.supports('animation', 'opacity'),
-    'linear': _slidrCSS.supports('transform', 'opacity'),
-    'cube': _slidrCSS.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
+    'fade': supports('animation', 'opacity'),
+    'linear': supports('transform', 'opacity'),
+    'cube': supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
   };
 
   // Timing functions for our animations.
@@ -141,7 +205,7 @@
 
 
   // The Slidr constructor.
-  var Slidr = function(id, target, opt_settings) {
+  var Slidr = function(id, target, settings) {
 
     var _ = {
       // Slidr id.
@@ -151,12 +215,7 @@
       slidr: target,
 
       // Settings for this Slidr.
-      settings: extend({
-        'transition': 'none',
-        'direction': 'horizontal',
-        'fading': true,
-        'clipping': false
-      }, opt_settings),
+      settings: settings,
 
       // Whether we've successfully called start().
       started: false,
@@ -501,173 +560,15 @@
     return api;
   };
 
-  /**
-   * Helper for creating Slidr CSS.
-   */
-  function SlidrCSS() {
-
-    var self = this;
-
-    /**
-     * Resolves a css property name to the browser supported name, or null if not supported.
-     */
-    self.resolve = function(cssProperty, forCSS) {
-      if (_propertyCache[cssProperty]) {
-        return (forCSS) ? _propertyCache[cssProperty].css : _propertyCache[cssProperty].dom;
-      }
-      var result = _normalize(cssProperty);
-      if (_style[result] !== undefined) {
-        _propertyCache[cssProperty] = {
-          css: cssProperty,
-          dom: result
-        };
-        return (forCSS) ? cssProperty : result;
-      }
-      var prefix = _getDOMPrefix(cssProperty);
-      if (!!prefix) {
-        result = _normalize(cssProperty, prefix);
-        if (_style[result] !== undefined) {
-          _propertyCache[cssProperty] = {
-            css: _cssPrefix + cssProperty,
-            dom: result
-          };
-          return (forCSS) ?  _propertyCache[cssProperty].css : result;
-        }
-      }
-      // Browser does not support this property.
-      _propertyCache[cssProperty] = null;
-      return null;
-    };
-
-    /**
-     * Check whether all given css properties are supported in the browser.
-     */
-    self.supports = function(/* prop1, prop2... */) {
-      for (var i = 0, prop; prop = arguments[i]; i++) {
-        if (!self.resolve(prop)) return false;
-      }
-      return true;
-    };
-
-    /**
-     * Applies necessary CSS browser prefixes for a set of properties.
-     */
-    self.fixup = function(properties) {
-      var result = {};
-      for (var p in properties) {
-        if (self.resolve(p)) {
-          result[self.resolve(p)] = properties[p];
-        }
-      }
-      return result;
-    };
-
-    /**
-     * Creates a keyframe animation rule.
-     */
-    self.createKeyframe = function(name, rules) {
-      // Make sure we support animations.
-      if (!self.resolve('animation')) {
-        return false;
-      }
-      // Make sure all animation properties are supported.
-      for (var r in rules) {
-        var properties = rules[r];
-        for (var p in properties) {
-          if (!self.resolve(p)) {
-            return false;
-          }
-        }
-      }
-      var prefix = _cssPrefix || '';
-      var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
-      for (var r in rules) {
-        rule.push(r + '% {');
-        var properties = rules[r];
-        for (var p in properties) {
-          rule.push(self.resolve(p, true) + ': ' + properties[p] + ';');
-        }
-        rule.push('}');
-      }
-      rule.push('}');
-      rule = rule.join(' ');
-      _addCSSRule(name, rule);
-    };
-
-    /**
-     * Pointer to the document style sheets.
-     */
-    var _style = document.getElementsByTagName('html')[0]['style'];
-
-    /**
-     * Pointer to our Slidr CSS style sheet.
-     */
-    var _styleSheet = (function() {
-      var style = document.createElement('style');
-      style.type = 'text/css';
-      document.head.appendChild(style);
-      return style.sheet || style.styleSheet;
-    }());
-
-    /**
-     * The CSS prefix for the displaying browser.
-     */
-    var _cssPrefix = null;
-
-    /**
-     * The DOM prefix for the displaying browser.
-     */
-    var _domPrefix = null;
-
-    /**
-     * The CSS property to prefix mapping.
-     */
-    var _propertyCache = {};
-
-    /**
-     * Adds a CSS rule to our Slidr stylesheet.
-     */
-    function _addCSSRule(name, rule) {
-      for (var r = 0, cssRule; cssRule = _styleSheet.cssRules[r]; r++) {
-        if (cssRule.name == name) {
-          _styleSheet.deleteRule(r);
-          break;
-        }
-      }
-      _styleSheet.insertRule(rule, _styleSheet.cssRules.length);
-    }
-
-    /**
-     * Given a CSS property and a optional dom prefix, tranlate it into a DOM document representation.
-     */
-    function _normalize(prop, opt_domPrefix) {
-      prop = prop.split('-');
-      for (var i = 0, p; p = prop[i]; i++) prop[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
-      (!!opt_domPrefix) ? prop.unshift(opt_domPrefix) : prop[0] = prop[0].toLowerCase();
-      return prop.join('');
-    }
-
-    /**
-     * Given a CSS property, retrieves the DOM prefix if applicable.
-     */
-    function _getDOMPrefix(cssProperty) {
-      if (_domPrefix === null && isString(cssProperty)) {
-        var DOMPrefixes = ['Webkit', 'Moz', 'ms', 'O', 'Khtml'];
-        for (var i = 0; i < DOMPrefixes.length; i++) {
-          if (_style[_normalize(cssProperty, DOMPrefixes[i])] !== undefined) {
-            _domPrefix = DOMPrefixes[i];
-            _cssPrefix = '-' + DOMPrefixes[i].toLowerCase() + '-';
-            break;
-          }
-        }
-      }
-      return _domPrefix;
-    }
+  // Slidr default settings.
+  var defaults = {
+    'transition': 'none',
+    'direction': 'horizontal',
+    'fading': true,
+    'clipping': false
   };
 
-  /**
-   * Global API.
-   */
+  // Global API.
   return {
     create: function(id, opt_settings) {
       var target = document.getElementById(id);
@@ -675,7 +576,7 @@
         console.warn('[Slidr] Could not find element with id: ' + id + '.');
         return;
       }
-      return new Slidr(id, target, opt_settings);
+      return new Slidr(id, target, extend(defaults, opt_settings));
     }
   };
 
