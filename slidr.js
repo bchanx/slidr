@@ -32,8 +32,7 @@
 
   // Merge all properties from {arguments} to {obj}. Overwrites.
   function extend(obj /* arg1, arg2.. */) {
-    var arg;
-    for (var i = 1; arg = arguments[i]; i++) for (var a in arg) obj[a] = arg[a];
+    for (var i = 1, arg; arg = arguments[i]; i++) for (var a in arg) obj[a] = arg[a];
     return obj;
   }
 
@@ -243,8 +242,7 @@
       // Finds all valid slides (direct children with 'data-slidr' attributes).
       find: function(opt_asList) {
         var valid = (opt_asList) ? [] : {};
-        var slide, name;
-        for (var i = 0; slide = _.slidr.childNodes[i]; i++) {
+        for (var i = 0, slide, name; slide = _.slidr.childNodes[i]; i++) {
           if (slide.getAttribute) {
             name = slide.getAttribute('data-slidr');
             if (name) {
@@ -259,22 +257,22 @@
       // Validate the [ids] we're trying to add doesn't conflict with existing slide assignments.
       validate: function(ids, trans, valid, prev, next) {
         if (!ids || ids.constructor !== Array) return false;
-        var current;
         // For each slide we're trying to add, check it against our known mapping.
-        for (var i = 0; current = ids[i]; i++) {
+        for (var i = 0, current, newPrev, newNext, oldPrev, oldNext, 
+             prevPrev, oldPrevTrans, oldNextTrans; current = ids[i]; i++) {
           if (!(current in valid)) return false;
           if (slides.get(current)) {
-            var newPrev = ids[i-1] || null;
-            var newNext = ids[i+1] || null;
-            var oldPrev = slides.get(current, prev);
-            var oldNext = slides.get(current, next);
-            var previousPrev = slides.get(newNext, prev);
-            var oldPrevTrans = transition.get(current, 'out', prev);
-            var oldNextTrans = transition.get(current, 'out', next);
+            newPrev = ids[i-1] || null;
+            newNext = ids[i+1] || null;
+            oldPrev = slides.get(current, prev);
+            oldNext = slides.get(current, next);
+            prevPrev = slides.get(newNext, prev);
+            oldPrevTrans = transition.get(current, 'out', prev);
+            oldNextTrans = transition.get(current, 'out', next);
             // Are we about to override an existing mapping?
             if ((oldNext && newNext && oldNext != newNext)
               || (oldPrev && newPrev && oldPrev != newPrev)
-              || (previousPrev && previousPrev != current)
+              || (prevPrev && prevPrev != current)
               || (newPrev && oldPrevTrans && oldPrevTrans != trans)
               || (newNext && oldNextTrans && oldNextTrans != trans)
             ) {
@@ -287,8 +285,7 @@
 
       // Adds a [list] of ids to our Slidr.
       add: function(ids, trans, valid, prev, next) {
-        var current;
-        for (var i = 0; current = ids[i]; i++) {
+        for (var i = 0, current; current = ids[i]; i++) {
           slides.map[current] = slides.map[current] || {};
           var s = slides.get(current);
           s.target = valid[current];
@@ -313,10 +310,10 @@
       // Check whether width, height, and borderbox should by dynamically updated.
       dynamic: function() {
         var clone = _.slidr.cloneNode(false);
-        var dummy = document.createElement('div');
-        dummy.setAttribute('style', 'width: 42px; height: 42px;');
+        var probe = document.createElement('div');
+        probe.setAttribute('style', 'width: 42px; height: 42px;');
         clone.setAttribute('style', 'position: absolute; opacity: 0');
-        clone.appendChild(dummy);
+        clone.appendChild(probe);
         _.slidr.parentNode.insertBefore(clone, _.slidr);
         var borderbox = css(clone, 'box-sizing') === 'border-box';
         var dynamic = {
@@ -546,8 +543,7 @@
      * Check whether all given css properties are supported in the browser.
      */
     self.supports = function(/* prop1, prop2... */) {
-      var prop;
-      for (var i = 0; prop = arguments[i]; i++) {
+      for (var i = 0, prop; prop = arguments[i]; i++) {
         if (!self.resolve(prop)) return false;
       }
       return true;
@@ -632,8 +628,7 @@
      * Adds a CSS rule to our Slidr stylesheet.
      */
     function _addCSSRule(name, rule) {
-      var cssRule;
-      for (var r = 0; cssRule = _styleSheet.cssRules[r]; r++) {
+      for (var r = 0, cssRule; cssRule = _styleSheet.cssRules[r]; r++) {
         if (cssRule.name == name) {
           _styleSheet.deleteRule(r);
           break;
@@ -647,8 +642,7 @@
      */
     function _normalize(prop, opt_domPrefix) {
       prop = prop.split('-');
-      var p;
-      for (var i = 0; p = prop[i]; i++) prop[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
+      for (var i = 0, p; p = prop[i]; i++) prop[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
       (!!opt_domPrefix) ? prop.unshift(opt_domPrefix) : prop[0] = prop[0].toLowerCase();
       return prop.join('');
     }
