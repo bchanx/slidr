@@ -41,96 +41,103 @@
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
-  // Slidr CSS style sheet.
-  var styleSheet = (function() {
-    var el = document.createElement('style');
-    el.type = 'text/css';
-    document.head.appendChild(el);
-    return el.sheet || el.styleSheet;
-  }());
-
-  // Adds a CSS rule to our Slidr stylesheet.
-  function addCSSRule(name, rule) {
-    for (var r = 0, cssRule; cssRule = styleSheet.cssRules[r]; r++) {
-      if (cssRule.name == name) {
-        styleSheet.deleteRule(r);
-        break;
-      }
-    }
-    styleSheet.insertRule(rule, styleSheet.cssRules.length);
-  }
-
-  // Reference to the document style element.
-  var styleEl = document.getElementsByTagName('html')[0]['style'];
-
-  // Vendor prefixes.
-  var prefixes = ['webkit', 'Moz', 'ms', 'O'];
-
-  // CSS property cache.
-  var props = {};
-
-  // Returns the browser supported property name, or null.
-  function vendor(prop, forCSS) {
-    if (!(prop in props)) {
-      var parts = prop.split('-');
-      for (var i = 0, p; p = parts[i]; i++) parts[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
-      var domprop = parts.join('');
-      domprop = domprop[0].toLowerCase() + domprop.slice(1);
-      if (styleEl[domprop] !== undefined) {
-        props[prop] = { css: prop, dom: domprop };
-      } else {
-        domprop = parts.join('');
-        for (i = 0; i < prefixes.length; i++) {
-          if (styleEl[prefixes[i] + domprop] !== undefined) {
-            props[prop] = { css: '-' + prefixes[i].toLowerCase() + '-' + prop, dom: prefixes[i] + domprop };
-          }
-        }
-      }
-      if (!props[prop]) props[prop] = null;
-    }
-    return (props[prop] !== null) ? (forCSS) ? props[prop].css : props[prop].dom : null;
-  }
-
-  // Check whether all given css properties are supported in the browser.
-  function supports(/* prop1, prop2... */) {
-    for (var i = 0, prop; prop = arguments[i]; i++) if (!vendor(prop)) return false;
-    return true;
-  };
-
-  // Creates a keyframe animation rule.
-  function createKeyframe(name, rules) {
-    var animation = vendor('animation', true);
-    if (animation) {
-      var prefix = (/^-[a-z]+-/gi.test(animation)) ? /^-[a-z]+-/gi.exec(animation)[0] : '';
-      var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
-      for (var r in rules) {
-        rule.push(r + '% {');
-        for (var p in rules[r]) rule.push(vendor(p, true) + ': ' + rules[r][p] + ';');
-        rule.push('}');
-      }
-      rule.push('}');
-      addCSSRule(name, rule.join(' '));
-    }
-  };
-
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
-      var style = window.getComputedStyle(el)[vendor(prop)];
+      var style = window.getComputedStyle(el)[browser.vendor(prop)];
       return (style) ? (style.slice(-2) === 'px' && style.indexOf('px') == style.length - 2) ? 
         parseInt(style.slice(0, -2)) : style : 'none';
     }
-    for (var p in prop) if (vendor(p)) el.style[vendor(p)] = prop[p];
+    for (var p in prop) if (browser.vendor(p)) el.style[browser.vendor(p)] = prop[p];
     return el;
   }
+
+  var browser = {
+
+    // Vendor prefixes.
+    prefixes: ['webkit', 'Moz', 'ms', 'O'],
+
+    // CSS property cache.
+    cache: {},
+
+    // Reference to the document style element.
+    styleEl: document.getElementsByTagName('html')[0]['style'],
+
+    // Slidr CSS style sheet.
+    styleSheet: (function() {
+      var el = document.createElement('style');
+      el.type = 'text/css';
+      document.head.appendChild(el);
+      return el.sheet || el.styleSheet;
+    }()),
+
+    // Adds a CSS rule to our Slidr stylesheet.
+    addCSSRule: function(name, rule) {
+      for (var r = 0, cssRule; cssRule = browser.styleSheet.cssRules[r]; r++) {
+        if (cssRule.name == name) {
+          browser.styleSheet.deleteRule(r);
+          break;
+        }
+      }
+      browser.styleSheet.insertRule(rule, browser.styleSheet.cssRules.length);
+    },
+
+    // Creates a keyframe animation rule.
+    createKeyframe: function(name, rules) {
+      var animation = browser.vendor('animation', true);
+      if (animation) {
+        var prefix = (/^-[a-z]+-/gi.test(animation)) ? /^-[a-z]+-/gi.exec(animation)[0] : '';
+        var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
+        for (var r in rules) {
+          rule.push(r + '% {');
+          for (var p in rules[r]) rule.push(browser.vendor(p, true) + ': ' + rules[r][p] + ';');
+          rule.push('}');
+        }
+        rule.push('}');
+        browser.addCSSRule(name, rule.join(' '));
+      }
+    },
+
+    // Returns the browser supported property name, or null.
+    vendor: function(prop, forCSS) {
+      if (!(prop in browser.cache)) {
+        var parts = prop.split('-');
+        for (var i = 0, p; p = parts[i]; i++) parts[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
+        var domprop = parts.join('');
+        domprop = domprop[0].toLowerCase() + domprop.slice(1);
+        if (browser.styleEl[domprop] !== undefined) {
+          browser.cache[prop] = { css: prop, dom: domprop };
+        } else {
+          domprop = parts.join('');
+          for (i = 0; i < browser.prefixes.length; i++) {
+            if (browser.styleEl[browser.prefixes[i] + domprop] !== undefined) {
+              browser.cache[prop] = {
+                css: '-' + browser.prefixes[i].toLowerCase() + '-' + prop, dom: browser.prefixes[i] + domprop
+              };
+            }
+          }
+        }
+        if (!browser.cache[prop]) browser.cache[prop] = null;
+      }
+      return (browser.cache[prop] !== null) ? (forCSS) ? browser.cache[prop].css : browser.cache[prop].dom : null;
+    },
+
+
+    // Check whether all given css properties are supported in the browser.
+    supports: function(/* prop1, prop2... */) {
+      for (var i = 0, prop; prop = arguments[i]; i++) if (!browser.vendor(prop)) return false;
+      return true;
+    },
+
+  };
 
   // Create CSS keyframes.
   var keyframe = {
     'fade': function(name, oStart, oEnd) {
-      createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+      browser.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
     },
     'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
-      createKeyframe(name, {
+      browser.createKeyframe(name, {
         '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)',
           'opacity': (type === 'in' ? '0' : oStart) },
         '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': (type === 'in' ? '0' : oStart) },
@@ -141,7 +148,7 @@
       });
     },
     'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
-      createKeyframe(name, {
+      browser.createKeyframe(name, {
         '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart },
         '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd }
       });
@@ -151,13 +158,14 @@
   // Properties defining animation support.
   var supported = {
     'none': true,
-    'fade': supports('animation', 'opacity'),
-    'linear': supports('transform', 'opacity'),
-    'cube': supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
+    'fade': browser.supports('animation', 'opacity'),
+    'linear': browser.supports('transform', 'opacity'),
+    'cube': browser.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
   };
 
   // Timing functions for our animations.
   var timing = {
+    'none': function(name) { return 'none'; },
     'fade': function(name) { return name + ' 0.4s ease-out 0s'; },
     'linear': function(name) { return name + ' 0.6s ease-out 0s'; },
     'cube': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
@@ -240,8 +248,7 @@
 
       // Validates a given transition.
       validate: function(trans) {
-        return (transition.available.indexOf(trans) < 0
-          || !supported[trans]) ? _.settings['transition'] : trans;
+        return (transition.available.indexOf(trans) < 0 || !supported[trans]) ? 'none' : trans;
       },
 
       // Get the direction transition for an element.
