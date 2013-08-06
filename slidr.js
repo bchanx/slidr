@@ -248,6 +248,7 @@
 
       // Validates a given transition.
       validate: function(trans) {
+        trans = trans || _.settings['transition'];
         return (transition.available.indexOf(trans) < 0 || !supported[trans]) ? 'none' : trans;
       },
 
@@ -442,8 +443,6 @@
             'display': (display === 'none') ? 'block' : display,
             'visibility': 'visible',
             'position': 'absolute',
-            'left': '50%',
-            'margin-left': '-' + css(s.target, 'width')/2 + 'px',
             'opacity': '0',
             'z-index': '0',
             'pointer-events': 'none'
