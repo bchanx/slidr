@@ -499,6 +499,24 @@
         }
       }
       return this;
+    },
+
+    // Automatically transition between slides.
+    auto: function(_, dir, msec) {
+      if (_.started) {
+        actions.stop(_);
+        _.auto = setInterval(function() {
+          slides.slide(_, dir);
+        }, msec);
+      }
+    },
+
+    // Stops auto transitioning.
+    stop: function(_) {
+      if (_.started && _.auto) {
+        clearInterval(_.auto);
+        _.auto = null;
+      }
     }
   };
 
@@ -515,7 +533,7 @@
       // Settings for this Slidr.
       settings: settings,
 
-      // Whether we've successfully called actions.start().
+      // Whether we've successfully called start().
       started: false,
 
       // Whether we've successfully called slides.display().
@@ -526,6 +544,9 @@
 
       // The current slide.
       current: null,
+
+      // Whether auto() is currently active. Stores the timer interval id.
+      auto: null,
 
       // A {mapping} of slides to their neighbors.
       slides: {},
@@ -575,6 +596,25 @@
        */
       add: function(direction, ids, opt_transition, opt_overwrite) {
         actions.add(_, direction, ids, opt_transition, opt_overwrite);
+        return this;
+      },
+
+      /**
+       * Automatically advance to the next slide after a certain timeout. Calls start() if not already called.
+       * @param {string} direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
+       * @param {int} msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
+       */
+      auto: function(direction, msec) {
+        actions.start(_);
+        actions.auto(_, direction || 'right', msec || 5000);
+        return this;
+      },
+
+      /**
+       * Stop auto transition if it's turned on.
+       */
+      stop: function() {
+        actions.stop(_);
         return this;
       }
     };
