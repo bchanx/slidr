@@ -505,9 +505,7 @@
     auto: function(_, dir, msec) {
       if (_.started) {
         actions.stop(_);
-        _.auto = setInterval(function() {
-          slides.slide(_, dir);
-        }, msec);
+        _.auto = setInterval(function() { slides.slide(_, dir); }, msec);
       }
     },
 
@@ -603,9 +601,10 @@
        * Automatically advance to the next slide after a certain timeout. Calls start() if not already called.
        * @param {string} direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
        * @param {int} msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
+       * @param {string} opt_start The `data-slidr` id to start at (only works if auto was called to start the Slidr).
        */
-      auto: function(direction, msec) {
-        actions.start(_);
+      auto: function(direction, msec, opt_start) {
+        actions.start(_, opt_start);
         actions.auto(_, direction || 'right', msec || 5000);
         return this;
       },
