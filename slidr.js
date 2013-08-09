@@ -74,12 +74,20 @@
     // Adds a CSS rule to our Slidr stylesheet.
     addCSSRule: function(name, rule) {
       for (var r = 0, cssRule; cssRule = browser.styleSheet.cssRules[r]; r++) {
-        if (cssRule.name == name) {
+        if (cssRule.name == name || cssRule.selectorText === name) {
           browser.styleSheet.deleteRule(r);
           break;
         }
       }
       browser.styleSheet.insertRule(rule, browser.styleSheet.cssRules.length);
+    },
+
+    // Creates a style rule.
+    createStyle: function(name, props) {
+      var rule = [name, '{'];
+      for (var p in props) rule.push(p + ':' + props[p] + ';');
+      rule.push('}');
+      browser.addCSSRule(name, rule.join(' '));
     },
 
     // Creates a keyframe animation rule.
@@ -182,8 +190,131 @@
     // Applies a directional transition to an element entering/leaving the Slidr.
     apply: function(_, el, type, dir) {
       var trans = transition.get(_, el, type, dir);
-      if (trans) fx.animate(_, el, trans, type, dir);
+      if (trans) {
+        breadcrumbs.update(_, el, type);
+        fx.animate(_, el, trans, type, dir);
+      }
     }
+  };
+
+  var breadcrumbs = {
+
+    // Initialize breadcrumbs.
+    init: function(_) {
+      if (_.slidr && !_.breadcrumbs) {
+        _.breadcrumbs = document.createElement('div');
+        _.breadcrumbs.id = _.id + '-slidr-breadcrumbs';
+        css(_.breadcrumbs, {
+          'position': 'absolute',
+          'bottom': '0',
+          'right': '0',
+          'opacity': '0',
+          'z-index': '0',
+          'padding': '10px',
+          'pointer-events': 'none',
+        });
+        _.slidr.appendChild(_.breadcrumbs);
+      }
+    },
+
+    // Find breadcrumbs.
+    find: function(_, crumbs, bounds, el, x, y) {
+      if (el) {
+        if (!crumbs[el]) {
+          crumbs[el] = { x: x, y: y };
+          if (x < bounds.x.min) bounds.x.min = x;
+          if (x > bounds.x.max) bounds.x.max = x;
+          if (y < bounds.y.min) bounds.y.min = y;
+          if (y > bounds.y.max) bounds.y.max = y;
+        }
+        var target = slides.get(_, el);
+        if (!crumbs[el].right) {
+          crumbs[el].right = true;
+          breadcrumbs.find(_, crumbs, bounds, target.right, x + 1, y);
+        }
+        if (!crumbs[el].up) {
+          crumbs[el].up = true;
+          breadcrumbs.find(_, crumbs, bounds, target.up, x, y + 1);
+        }
+        if (!crumbs[el].left) {
+          crumbs[el].left = true;
+          breadcrumbs.find(_, crumbs, bounds, target.left, x - 1, y);
+        }
+        if (!crumbs[el].down) {
+          crumbs[el].down = true;
+          breadcrumbs.find(_, crumbs, bounds, target.down, x, y - 1);
+        }
+      }
+    },
+
+    // Update breadcrumbs.
+    update: function(_, el, type) {
+      if (type === 'in') _.crumbs[el].target.classList.add('active');
+      else _.crumbs[el].target.classList.remove('active');
+    },
+
+    // Create breadcrumbs.
+    create: function(_) {
+      breadcrumbs.init(_);
+      if (_.breadcrumbs) {
+        var crumbs = {};
+        var bounds = { x: { min: 0, max: 0 }, y: { min: 0, max: 0} };
+        breadcrumbs.find(_, crumbs, bounds, _.start, 0, 0);
+        bounds.x.modifier = 0 - bounds.x.min;
+        bounds.y.modifier = 0 - bounds.y.min;
+        var crumbsMap = {};
+        for (var el in crumbs) {
+          crumbs[el].x += bounds.x.modifier;
+          crumbs[el].y += bounds.y.modifier;
+          crumbsMap[crumbs[el].x + ',' + crumbs[el].y] = el;
+        }
+        var rows = bounds.y.max - bounds.y.min + 1;
+        var columns = bounds.x.max - bounds.x.min + 1;
+        var clone = _.breadcrumbs.cloneNode(false);
+        var ul = document.createElement('ul');
+        ul.classList.add('slidr-breadcrumbs');
+        var li = document.createElement('li');
+        browser.createStyle('.slidr-breadcrumbs', {
+          'font-size': '0',
+          'line-height': '0'
+        });
+        browser.createStyle('.slidr-breadcrumbs li', {
+          'width': '10px',
+          'height': '10px',
+          'display': 'inline-block',
+          'margin': '3px',
+        });
+        browser.createStyle('.slidr-breadcrumbs li.normal', {
+          'border-radius': '100%',
+          'border': '1px white solid',
+          'cursor': 'pointer',
+          'pointer-events': 'auto',
+        });
+        browser.createStyle('.slidr-breadcrumbs li.active', {
+          'width': '12px',
+          'height': '12px',
+          'margin': '2px',
+          'background-color': 'white'
+        });
+        for (var r = rows - 1; r >= 0; r--) {
+          var ulclone = ul.cloneNode(false);
+          for (var c = 0; c < columns; c++) {
+            var liclone = li.cloneNode(false);
+            var element = crumbsMap[c + ',' + r];
+            if (element) {
+              liclone.classList.add('normal');
+              liclone.setAttribute('data-slidr-crumb', element);
+              crumbs[element].target = liclone;
+            }
+            ulclone.appendChild(liclone);
+          };
+          clone.appendChild(ulclone);
+        }
+        _.slidr.replaceChild(clone, _.breadcrumbs);
+        _.breadcrumbs = clone;
+        _.crumbs = crumbs;
+      }
+    },
   };
 
   var slides = {
@@ -201,6 +332,7 @@
         _.current = _.start;
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
+        breadcrumbs.update(_, _.current, 'in');
         _.displayed = true;
       }
     },
@@ -429,19 +561,19 @@
       return parts.join('-');
     },
 
-    // Animate an `el` with `trans` effects coming [in|out] as `type` from direction `opt_dir`.
-    animate: function(_, el, trans, type, opt_dir) {
+    // Animate an `el` with `trans` effects coming [in|out] as `type` from direction `dir`.
+    animate: function(_, el, trans, type, dir, opt_target, opt_z, opt_pointer) {
       var anim = {
         'opacity': (type === 'in') ? '1': '0',
-        'z-index': (type === 'in') ? '1': '0',
-        'pointer-events': (type === 'in') ? 'auto': 'none'
+        'z-index': opt_z || (type === 'in' ? '1': '0'),
+        'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
-      var target = slides.get(_, el).target;
+      var target = opt_target || slides.get(_, el).target;
       if (fx.supported[trans] && fx.timing[trans]) {
-        var name = fx.name(_, trans, type, opt_dir);
-        var keyframe = lookup(fx.animation, [trans, type, opt_dir]);
-        if (keyframe && opt_dir) {
-          var size = css(target, (opt_dir === 'up' || opt_dir === 'down') ? 'height' : 'width');
+        var name = fx.name(_, trans, type, dir);
+        var keyframe = lookup(fx.animation, [trans, type, dir]);
+        if (keyframe && dir) {
+          var size = css(target, (dir === 'up' || dir === 'down') ? 'height' : 'width');
           var opacity = _.settings['fading'] ? '0' : '1';
           keyframe(name, size, opacity);
         }
@@ -468,6 +600,7 @@
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
+        breadcrumbs.create(_);
         slides.display(_);
         size.autoResize(_);
         _.started = true;
@@ -515,6 +648,14 @@
         clearInterval(_.auto);
         _.auto = null;
       }
+    },
+
+    // Toggle breadcrumbs.
+    breadcrumbs: function(_) {
+      if (_.started && _.breadcrumbs) {
+        var opacity = css(_.breadcrumbs, 'opacity');
+        fx.animate(_, null, 'fade', (opacity === '0') ? 'in' : 'out', null, _.breadcrumbs, '2', 'none');
+      }
     }
   };
 
@@ -527,6 +668,9 @@
 
       // Reference to the Slidr element.
       slidr: target,
+
+      // Reference to the Slidr breadcrumbs element.
+      breadcrumbs: null,
 
       // Settings for this Slidr.
       settings: settings,
@@ -551,6 +695,9 @@
 
       // A {mapping} of slides and their transition effects.
       trans: {},
+
+      // A {mapping} of slides and their (x, y) position.
+      crumbs: {},
     }
 
     var api = {
@@ -614,6 +761,14 @@
        */
       stop: function() {
         actions.stop(_);
+        return this;
+      },
+
+      /**
+       * Toggle breadcrumbs.
+       */
+      breadcrumbs: function() {
+        actions.breadcrumbs(_);
         return this;
       }
     };
