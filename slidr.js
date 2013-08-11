@@ -30,7 +30,7 @@
     return (result === obj) ? null : result;
   }
 
-  // Merge all properties from {arguments} to {obj}. Overwrites.
+  // Merge all properties from {arguments} to {obj} if it's not yet defined.
   function extend(obj /* arg1, arg2.. */) {
     for (var i = 1, arg; arg = arguments[i]; i++) for (var a in arg) if (obj[a] === undefined) obj[a] = arg[a];
     return obj;
