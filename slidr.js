@@ -32,7 +32,7 @@
 
   // Merge all properties from {arguments} to {obj}. Overwrites.
   function extend(obj /* arg1, arg2.. */) {
-    for (var i = 1, arg; arg = arguments[i]; i++) for (var a in arg) obj[a] = arg[a];
+    for (var i = 1, arg; arg = arguments[i]; i++) for (var a in arg) if (obj[a] === undefined) obj[a] = arg[a];
     return obj;
   }
 
@@ -174,9 +174,7 @@
 
     // Get the direction transition for an element.
     get: function(_, el, type, dir) {
-      dir = (type === 'in') ? (dir === 'up') ? 'down' : (dir === 'down') ? 'up' :
-        (dir === 'left') ? 'right' : 'left' : dir;
-      return lookup(_.trans, [el, dir]);
+      return lookup(_.trans, [el, (type === 'in') ? transition.opposite(dir) : dir]);
     },
 
     // Sets the direction transition for an element.
@@ -188,12 +186,18 @@
     },
 
     // Applies a directional transition to an element entering/leaving the Slidr.
-    apply: function(_, el, type, dir) {
-      var trans = transition.get(_, el, type, dir);
+    apply: function(_, el, type, dir, opt_trans) {
+      var trans = opt_trans || transition.get(_, el, type, dir);
       if (trans) {
         breadcrumbs.update(_, el, type);
         fx.animate(_, el, trans, type, dir);
       }
+    },
+
+    // Get the opoosite direction.
+    opposite: function(dir) {
+      return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' :
+        (dir === 'left') ? 'right' : (dir === 'right') ? 'left' : null;
     }
   };
 
@@ -204,16 +208,65 @@
       if (_.slidr && !_.breadcrumbs) {
         _.breadcrumbs = document.createElement('div');
         _.breadcrumbs.id = _.id + '-slidr-breadcrumbs';
-        css(_.breadcrumbs, {
-          'position': 'absolute',
-          'bottom': '0',
-          'right': '0',
-          'opacity': '0',
-          'z-index': '0',
-          'padding': '10px',
-          'pointer-events': 'none',
-        });
+        breadcrumbs.css(_);
         _.slidr.appendChild(_.breadcrumbs);
+        (_.breadcrumbs.attachEvent) ? _.breadcrumbs.attachEvent('onclick', breadcrumbs.onclick(_)) :
+                                      _.breadcrumbs.addEventListener('click', breadcrumbs.onclick(_));
+      }
+    },
+
+    // Breadcrumbs CSS.
+    css: function(_) {
+      css(_.breadcrumbs, {
+        'position': 'absolute',
+        'bottom': '0',
+        'right': '0',
+        'opacity': '0',
+        'z-index': '0',
+        'padding': '10px',
+        'pointer-events': 'none',
+      });
+      browser.createStyle('.slidr-breadcrumbs', {
+        'font-size': '0',
+        'line-height': '0'
+      });
+      browser.createStyle('.slidr-breadcrumbs li', {
+        'width': '10px',
+        'height': '10px',
+        'display': 'inline-block',
+        'margin': '3px',
+      });
+      browser.createStyle('.slidr-breadcrumbs li.normal', {
+        'border-radius': '100%',
+        'border': '1px white solid',
+        'cursor': 'pointer',
+        'pointer-events': 'auto',
+      });
+      browser.createStyle('.slidr-breadcrumbs li.active', {
+        'width': '12px',
+        'height': '12px',
+        'margin': '2px',
+        'background-color': 'white'
+      });
+    },
+
+    // On click callback.
+    onclick: function(_) {
+      return function handler(e) {
+        if (e.target && e.target.getAttribute) {
+          var target = e.target.getAttribute('data-slidr-crumb');
+          if (target && slides.get(_, target)) {
+            var cur = _.crumbs[_.current];
+            var next = _.crumbs[target];
+            var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
+            var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
+            var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
+                         (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
+            var indir = (transition.get(_, target, 'in', hdir)) ? hdir :
+                        (transition.get(_, target, 'in', vdir)) ? vdir : null;
+            slides.goto(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
+          }
+        }
       }
     },
 
@@ -270,32 +323,10 @@
         }
         var rows = bounds.y.max - bounds.y.min + 1;
         var columns = bounds.x.max - bounds.x.min + 1;
-        var clone = _.breadcrumbs.cloneNode(false);
+        while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
         var ul = document.createElement('ul');
         ul.classList.add('slidr-breadcrumbs');
         var li = document.createElement('li');
-        browser.createStyle('.slidr-breadcrumbs', {
-          'font-size': '0',
-          'line-height': '0'
-        });
-        browser.createStyle('.slidr-breadcrumbs li', {
-          'width': '10px',
-          'height': '10px',
-          'display': 'inline-block',
-          'margin': '3px',
-        });
-        browser.createStyle('.slidr-breadcrumbs li.normal', {
-          'border-radius': '100%',
-          'border': '1px white solid',
-          'cursor': 'pointer',
-          'pointer-events': 'auto',
-        });
-        browser.createStyle('.slidr-breadcrumbs li.active', {
-          'width': '12px',
-          'height': '12px',
-          'margin': '2px',
-          'background-color': 'white'
-        });
         for (var r = rows - 1; r >= 0; r--) {
           var ulclone = ul.cloneNode(false);
           for (var c = 0; c < columns; c++) {
@@ -304,14 +335,13 @@
             if (element) {
               liclone.classList.add('normal');
               liclone.setAttribute('data-slidr-crumb', element);
+              if (element === _.current) liclone.classList.add('active');
               crumbs[element].target = liclone;
             }
             ulclone.appendChild(liclone);
           };
-          clone.appendChild(ulclone);
+          _.breadcrumbs.appendChild(ulclone);
         }
-        _.slidr.replaceChild(clone, _.breadcrumbs);
-        _.breadcrumbs = clone;
         _.crumbs = crumbs;
       }
     },
@@ -330,20 +360,25 @@
     display: function(_) {
       if (!_.displayed && slides.get(_, _.start)) {
         _.current = _.start;
+        breadcrumbs.create(_);
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
-        breadcrumbs.update(_, _.current, 'in');
         _.displayed = true;
+        if (_.settings['breadcrumbs']) actions.breadcrumbs(_, 'in')
       }
     },
 
     // Transition to the next slide in direction `dir`.
     slide: function(_, dir) {
-      var next = slides.get(_, _.current, dir);
-      if (_.current && next) {
-        transition.apply(_, _.current, 'out', dir);
-        _.current = next;
-        transition.apply(_, next, 'in', dir);
+      return slides.goto(_, slides.get(_, _.current, dir), dir, dir);
+    },
+
+    // Jump to a target slide.
+    goto: function(_, target, outdir, indir, opt_outtrans, opt_intrans) {
+      if (_.current && target) {
+        transition.apply(_, _.current, 'out', outdir, opt_outtrans);
+        _.current = target;
+        transition.apply(_, target, 'in', indir, opt_intrans);
         return true;
       }
       return false;
@@ -411,6 +446,7 @@
         _.start = (!_.start) ? current : _.start;
       }
       if (_.started && !_.displayed) slides.display(_);
+      else breadcrumbs.create(_);
       return true;
     }
   };
@@ -600,7 +636,6 @@
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
-        breadcrumbs.create(_);
         slides.display(_);
         size.autoResize(_);
         _.started = true;
@@ -651,11 +686,9 @@
     },
 
     // Toggle breadcrumbs.
-    breadcrumbs: function(_) {
-      if (_.started && _.breadcrumbs) {
-        var opacity = css(_.breadcrumbs, 'opacity');
-        fx.animate(_, null, 'fade', (opacity === '0') ? 'in' : 'out', null, _.breadcrumbs, '2', 'none');
-      }
+    breadcrumbs: function(_, opt_type) {
+      if (_.breadcrumbs && _.displayed) fx.animate(_, null, 'fade',
+        opt_type || (css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out'), null, _.breadcrumbs, '2', 'none');
     }
   };
 
@@ -784,7 +817,8 @@
     'transition': 'none',
     'direction': 'horizontal',
     'fading': true,
-    'clipping': false
+    'clipping': false,
+    'breadcrumbs': false,
   };
 
   // Global API.
@@ -808,7 +842,7 @@
         console.warn('[Slidr] Could not find element with id: ' + id + '.');
         return;
       }
-      INSTANCES[id] = INSTANCES[id] || new Slidr(id, target, extend(DEFAULTS, opt_settings));
+      INSTANCES[id] = INSTANCES[id] || new Slidr(id, target, extend(opt_settings || {}, DEFAULTS));
       return INSTANCES[id];
     }
   };
