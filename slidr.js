@@ -51,7 +51,8 @@
   // Add/rm class(es) on an element.
   function classname(el, type /* class1, class2... */) {
     for (var a = 2, cls; cls = arguments[a]; a++) {
-      (type === 'add') ? el.classList.add(cls) : (type === 'rm') ? el.classList.remove(cls) : null;
+      if (type === 'add') el.classList.add(cls);
+      if (type === 'rm') el.classList.remove(cls);
     }
     return el;
   }
@@ -238,11 +239,11 @@
 
     // Transition to the next slide in direction `dir`.
     slide: function(_, dir) {
-      return slides.goto(_, slides.get(_, _.current, dir), dir, dir);
+      return slides.jump(_, slides.get(_, _.current, dir), dir, dir);
     },
 
     // Jump to a target slide.
-    goto: function(_, target, outdir, indir, opt_outtrans, opt_intrans) {
+    jump: function(_, target, outdir, indir, opt_outtrans, opt_intrans) {
       if (_.current && target) {
         transition.apply(_, _.current, 'out', outdir, opt_outtrans);
         _.current = target;
@@ -330,7 +331,7 @@
           'opacity': '0',
           'z-index': '0',
           'padding': '10px',
-          'pointer-events': 'none',
+          'pointer-events': 'none'
         });
         breadcrumbs.css();
         _.slidr.appendChild(_.breadcrumbs);
@@ -349,13 +350,13 @@
         'width': '10px',
         'height': '10px',
         'display': 'inline-block',
-        'margin': '3px',
+        'margin': '3px'
       });
       browser.createStyle('.slidr-breadcrumbs li.normal', {
         'border-radius': '100%',
         'border': '1px white solid',
         'cursor': 'pointer',
-        'pointer-events': 'auto',
+        'pointer-events': 'auto'
       });
       browser.createStyle('.slidr-breadcrumbs li.active', {
         'width': '12px',
@@ -379,7 +380,7 @@
                          (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
             var indir = (transition.get(_, target, 'in', hdir)) ? hdir :
                         (transition.get(_, target, 'in', vdir)) ? vdir : null;
-            slides.goto(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
+            slides.jump(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
           }
         }
       }
@@ -453,7 +454,7 @@
         }
         _.crumbs = crumbs;
       }
-    },
+    }
   };
 
   var fx = {
@@ -482,7 +483,7 @@
       'none': true,
       'fade': browser.supports('animation', 'opacity'),
       'linear': browser.supports('transform', 'opacity'),
-      'cube': browser.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity'),
+      'cube': browser.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity')
     },
 
     // Timing functions for our animations.
@@ -490,7 +491,7 @@
       'none': function(name) { return 'none'; },
       'fade': function(name) { return name + ' 0.4s ease-out 0s'; },
       'linear': function(name) { return name + ' 0.6s ease-out 0s'; },
-      'cube': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; },
+      'cube': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; }
     },
 
     // Defines our slide animations.
@@ -500,20 +501,20 @@
           browser.add['fade']('slidr-fade-in', '0', '1');
           browser.add['fade']('slidr-fade-out', '1', '0');
           return null; 
-        })(),
+        })()
       },
       'linear': {
         'in': {
           'left': function(name, w, o) { browser.add['linear'](name, 'in', 'X(-' + w, 'X(0', o, '1'); },
           'right': function(name, w, o) { browser.add['linear'](name, 'in', 'X(' + w, 'X(0', o, '1'); },
           'up': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(-' + h, 'Y(0', o, '1'); },
-          'down': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(' + h, 'Y(0', o, '1'); },
+          'down': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(' + h, 'Y(0', o, '1'); }
         },
         'out': {
           'left': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(' + w, '1', o); },
           'right': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(-' + w, '1', o); },
           'up': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(' + h, '1', o); },
-          'down': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(-' + h, '1', o); },
+          'down': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(-' + h, '1', o); }
         }
       },
       'cube': {
@@ -522,15 +523,15 @@
           'left': function(name, w, o) { browser.add['cube'](name, 'Y(-90', 'Y(0', w/2, o, '1'); },
           'right': function(name, w, o) { browser.add['cube'](name, 'Y(90', 'Y(0', w/2, o, '1'); },
           'up': function(name, h, o) { browser.add['cube'](name, 'X(90', 'X(0', h/2, o, '1'); },
-          'down': function(name, h, o) { browser.add['cube'](name, 'X(-90', 'X(0', h/2, o, '1'); },
+          'down': function(name, h, o) { browser.add['cube'](name, 'X(-90', 'X(0', h/2, o, '1'); }
         },
         'out': {
           'left': function(name, w, o) { browser.add['cube'](name, 'Y(0', 'Y(90', w/2, '1', o); },
           'right': function(name, w, o) { browser.add['cube'](name, 'Y(0', 'Y(-90', w/2, '1', o); },
           'up': function(name, h, o) { browser.add['cube'](name, 'X(0', 'X(-90', h/2, '1', o); },
-          'down': function(name, h, o) { browser.add['cube'](name, 'X(0', 'X(90', h/2, '1', o); },
+          'down': function(name, h, o) { browser.add['cube'](name, 'X(0', 'X(90', h/2, '1', o); }
         }
-      },
+      }
     },
 
     // Resolve keyframe animation name.
@@ -559,7 +560,7 @@
         anim['animation'] = fx.timing[trans](name);
       }
       css(target, anim);
-    },
+    }
   };
 
   var size = {
@@ -728,7 +729,7 @@
       trans: {},
 
       // A {mapping} of slides and their (x, y) position.
-      crumbs: {},
+      crumbs: {}
     }
 
     var api = {
@@ -816,7 +817,7 @@
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
     'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
     'clipping': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
-    'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
+    'breadcrumbs': false          // Show or hide breadcrumbs on start(). `true` or `false`.
   };
 
   // Global API.
