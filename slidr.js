@@ -41,6 +41,21 @@
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
+  // Creates a document element with an optional class name.
+  function createEl(tag, props) {
+    var el = document.createElement(tag);
+    for (var p in props) el[p] = props[p];
+    return el;
+  }
+
+  // Add/rm class(es) on an element.
+  function classname(el, type /* class1, class2... */) {
+    for (var a = 2, cls; cls = arguments[a]; a++) {
+      (type === 'add') ? el.classList.add(cls) : (type === 'rm') ? el.classList.remove(cls) : null;
+    }
+    return el;
+  }
+
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
@@ -65,8 +80,7 @@
 
     // Slidr CSS style sheet.
     styleSheet: (function() {
-      var el = document.createElement('style');
-      el.type = 'text/css';
+      var el = createEl('style', { 'type' : 'text/css' });
       document.head.appendChild(el);
       return el.sheet || el.styleSheet;
     }()),
@@ -309,9 +323,7 @@
     // Initialize breadcrumbs container.
     init: function(_) {
       if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = document.createElement('div');
-        _.breadcrumbs.id = _.id + '-slidr-breadcrumbs';
-        css(_.breadcrumbs, {
+        _.breadcrumbs = css(createEl('div', { 'id': _.id + '-slidr-breadcrumbs' }), {
           'position': 'absolute',
           'bottom': '0',
           'right': '0',
@@ -402,8 +414,7 @@
 
     // Update breadcrumbs.
     update: function(_, el, type) {
-      if (type === 'in') _.crumbs[el].target.classList.add('active');
-      else _.crumbs[el].target.classList.remove('active');
+      classname(_.crumbs[el].target, type === 'in' ? 'add' : 'rm', 'active');
     },
 
     // Create breadcrumbs.
@@ -424,18 +435,16 @@
         var rows = bounds.y.max - bounds.y.min + 1;
         var columns = bounds.x.max - bounds.x.min + 1;
         while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
-        var ul = document.createElement('ul');
-        ul.classList.add('slidr-breadcrumbs');
-        var li = document.createElement('li');
+        var ul = classname(createEl('ul'), 'add', 'slidr-breadcrumbs');
+        var li = createEl('li');
         for (var r = rows - 1, ulclone; r >= 0; r--) {
           ulclone = ul.cloneNode(false);
           for (var c = 0, liclone, element; c < columns; c++) {
             liclone = li.cloneNode(false);
             element = crumbsMap[c + ',' + r];
             if (element) {
-              liclone.classList.add('normal');
+              classname(liclone, 'add', 'normal', element === _.current ? 'active' : null);
               liclone.setAttribute('data-slidr-crumb', element);
-              if (element === _.current) liclone.classList.add('active');
               crumbs[element].target = liclone;
             }
             ulclone.appendChild(liclone);
@@ -557,10 +566,8 @@
 
     // Check whether width, height, and borderbox should by dynamically updated.
     dynamic: function(_) {
-      var clone = _.slidr.cloneNode(false);
-      var probe = document.createElement('div');
-      probe.setAttribute('style', 'width: 42px; height: 42px;');
-      clone.setAttribute('style', 'position: absolute; opacity: 0');
+      var clone = css(_.slidr.cloneNode(false), { 'position': 'absolute', 'opacity': '0' });
+      var probe = css(createEl('div'), { 'width': '42px', 'height': '42px' });
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
       var borderbox = css(clone, 'box-sizing') === 'border-box';
