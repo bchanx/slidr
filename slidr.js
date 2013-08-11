@@ -526,11 +526,8 @@
 
     // Resolve keyframe animation name.
     name: function(_, trans, type, dir) {
-      var parts = ['slidr', trans, type];
-      if (trans !== 'fade') {
-        parts.unshift(_.id);
-        parts.push(dir);
-      }
+      var parts = [trans === 'fade' ? 'slidr' : _.id, trans, type];
+      if (trans !== 'fade') parts.push(dir);
       return parts.join('-');
     },
 
@@ -808,11 +805,11 @@
 
   // Slidr default settings.
   var DEFAULTS = {
-    'transition': 'none',
-    'direction': 'horizontal',
-    'fading': true,
-    'clipping': false,
-    'breadcrumbs': false,
+    'transition': 'none',         // The default transition to apply to slides for add(). See slidr.transitions().
+    'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
+    'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
+    'clipping': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
+    'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
   };
 
   // Global API.
