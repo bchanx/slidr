@@ -786,13 +786,13 @@
 
     // Toggle breadcrumbs.
     breadcrumbs: function(_, opt_type) {
-      if (_.breadcrumbs && _.displayed && _.breadcrumbs) fx.animate(_, null, 'fade',
+      if (_.breadcrumbs && _.displayed) fx.animate(_, null, 'fade',
         opt_type || (css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out'), null, _.breadcrumbs, '3', 'none');
     },
 
     // Toggle controls.
     controls: function(_, opt_type) {
-      if (_.controls && _.displayed && _.controls) fx.animate(_, null, 'fade',
+      if (_.controls && _.displayed) fx.animate(_, null, 'fade',
         opt_type || (css(_.controls, 'opacity') === '0' ? 'in' : 'out'), null, _.controls, '2', 'none');
     }
   };
