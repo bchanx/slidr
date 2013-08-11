@@ -640,7 +640,6 @@
         size.autoResize(_);
         _.started = true;
       }
-      return this;
     },
 
     // Can we slide?
@@ -666,7 +665,6 @@
           slides.add(_, ids, trans, valid, prev, next);
         }
       }
-      return this;
     },
 
     // Automatically transition between slides.
