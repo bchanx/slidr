@@ -9,13 +9,13 @@
  */
 (function(root, factory) {
   // CommonJS
-  if (typeof exports === 'object') module.exports = factory();
+  if (typeof exports === 'object') module['exports'] = factory();
 
   // AMD module
-  else if (typeof define === 'function' && define.amd) define(factory);
+  else if (typeof define === 'function' && define['amd']) define(factory);
 
   // Browser globals
-  else root.slidr = factory();
+  else root['slidr'] = factory();
 
 } (this, function() {
   'use strict';
@@ -60,11 +60,11 @@
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
-      var style = window.getComputedStyle(el)[browser.vendor(prop)];
+      var style = window.getComputedStyle(el)[browser.fix(prop)];
       return (style) ? (style.slice(-2) === 'px' && style.indexOf('px') == style.length - 2) ? 
         parseInt(style.slice(0, -2)) : style : 'none';
     }
-    for (var p in prop) if (browser.vendor(p)) el.style[browser.vendor(p)] = prop[p];
+    for (var p in prop) if (browser.fix(p)) el.style[browser.fix(p)] = prop[p];
     return el;
   }
 
@@ -107,13 +107,13 @@
 
     // Creates a keyframe animation rule.
     createKeyframe: function(name, rules) {
-      var animation = browser.vendor('animation', true);
+      var animation = browser.fix('animation', true);
       if (animation) {
         var prefix = (/^-[a-z]+-/gi.test(animation)) ? /^-[a-z]+-/gi.exec(animation)[0] : '';
         var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
         for (var r in rules) {
           rule.push(r + '% {');
-          for (var p in rules[r]) rule.push(browser.vendor(p, true) + ': ' + rules[r][p] + ';');
+          for (var p in rules[r]) rule.push(browser.fix(p, true) + ': ' + rules[r][p] + ';');
           rule.push('}');
         }
         rule.push('}');
@@ -122,7 +122,7 @@
     },
 
     // Returns the browser supported property name, or null.
-    vendor: function(prop, forCSS) {
+    fix: function(prop, forCSS) {
       if (!(prop in browser.cache)) {
         var parts = prop.split('-');
         for (var i = 0, p; p = parts[i]; i++) parts[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
@@ -147,7 +147,7 @@
 
     // Check whether all given css properties are supported in the browser.
     supports: function(/* prop1, prop2... */) {
-      for (var i = 0, prop; prop = arguments[i]; i++) if (!browser.vendor(prop)) return false;
+      for (var i = 0, prop; prop = arguments[i]; i++) if (!browser.fix(prop)) return false;
       return true;
     },
 
@@ -243,11 +243,11 @@
     },
 
     // Jump to a target slide.
-    jump: function(_, target, outdir, indir, opt_outtrans, opt_intrans) {
-      if (_.current && target) {
+    jump: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
+      if (_.current && el) {
         transition.apply(_, _.current, 'out', outdir, opt_outtrans);
-        _.current = target;
-        transition.apply(_, target, 'in', indir, opt_intrans);
+        _.current = el;
+        transition.apply(_, el, 'in', indir, opt_intrans);
         return true;
       }
       return false;
@@ -302,7 +302,7 @@
       for (var i = 0, current; current = ids[i]; i++) {
         _.slides[current] = _.slides[current] || {};
         var s = slides.get(_, current);
-        s.target = valid[current];
+        s.el = valid[current];
         if (ids[i-1]) {
           s[prev] = ids[i-1];
           transition.set(_, current, prev, trans);
@@ -320,11 +320,14 @@
   };
 
   var breadcrumbs = {
+  
+    // Classname
+    cls: 'slidr-breadcrumbs',
 
     // Initialize breadcrumbs container.
     init: function(_) {
       if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = css(createEl('div', { 'id': _.id + '-slidr-breadcrumbs' }), {
+        _.breadcrumbs = css(createEl('div', { 'id': _.id + '-' + breadcrumbs.cls }), {
           'position': 'absolute',
           'bottom': '0',
           'right': '0',
@@ -342,23 +345,23 @@
 
     // Breadcrumbs CSS rules.
     css: function() {
-      browser.createStyle('.slidr-breadcrumbs', {
+      browser.createStyle('.' + breadcrumbs.cls, {
         'font-size': '0',
         'line-height': '0'
       });
-      browser.createStyle('.slidr-breadcrumbs li', {
+      browser.createStyle('.' + breadcrumbs.cls + ' li', {
         'width': '10px',
         'height': '10px',
         'display': 'inline-block',
         'margin': '3px'
       });
-      browser.createStyle('.slidr-breadcrumbs li.normal', {
+      browser.createStyle('.' + breadcrumbs.cls + ' li.normal', {
         'border-radius': '100%',
         'border': '1px white solid',
         'cursor': 'pointer',
         'pointer-events': 'auto'
       });
-      browser.createStyle('.slidr-breadcrumbs li.active', {
+      browser.createStyle('.' + breadcrumbs.cls + ' li.active', {
         'width': '12px',
         'height': '12px',
         'margin': '2px',
@@ -370,17 +373,17 @@
     onclick: function(_) {
       return function handler(e) {
         if (e.target && e.target.getAttribute) {
-          var target = e.target.getAttribute('data-slidr-crumb');
-          if (target && slides.get(_, target)) {
+          var el = e.target.getAttribute('data-' + breadcrumbs.cls);
+          if (el && slides.get(_, el) && el !== _.current) {
             var cur = _.crumbs[_.current];
-            var next = _.crumbs[target];
+            var next = _.crumbs[el];
             var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
             var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
             var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
                          (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
-            var indir = (transition.get(_, target, 'in', hdir)) ? hdir :
-                        (transition.get(_, target, 'in', vdir)) ? vdir : null;
-            slides.jump(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
+            var indir = (transition.get(_, el, 'in', hdir)) ? hdir :
+                        (transition.get(_, el, 'in', vdir)) ? vdir : null;
+            slides.jump(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
           }
         }
       }
@@ -404,10 +407,10 @@
           if (y < bounds.y.min) bounds.y.min = y;
           if (y > bounds.y.max) bounds.y.max = y;
         }
-        var target = slides.get(_, el);
+        el = slides.get(_, el);
         for (var o in breadcrumbs.offsets) {
-          if (target[o] && !crumbs[target[o]]) {
-            breadcrumbs.find(_, crumbs, bounds, target[o], x + breadcrumbs.offsets[o].x, y + breadcrumbs.offsets[o].y);
+          if (el[o] && !crumbs[el[o]]) {
+            breadcrumbs.find(_, crumbs, bounds, el[o], x + breadcrumbs.offsets[o].x, y + breadcrumbs.offsets[o].y);
           }
         }
       }
@@ -415,7 +418,7 @@
 
     // Update breadcrumbs.
     update: function(_, el, type) {
-      classname(_.crumbs[el].target, type === 'in' ? 'add' : 'rm', 'active');
+      classname(_.crumbs[el].el, type === 'in' ? 'add' : 'rm', 'active');
     },
 
     // Create breadcrumbs.
@@ -436,7 +439,7 @@
         var rows = bounds.y.max - bounds.y.min + 1;
         var columns = bounds.x.max - bounds.x.min + 1;
         while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
-        var ul = classname(createEl('ul'), 'add', 'slidr-breadcrumbs');
+        var ul = classname(createEl('ul'), 'add', breadcrumbs.cls);
         var li = createEl('li');
         for (var r = rows - 1, ulclone; r >= 0; r--) {
           ulclone = ul.cloneNode(false);
@@ -445,8 +448,8 @@
             element = crumbsMap[c + ',' + r];
             if (element) {
               classname(liclone, 'add', 'normal', element === _.current ? 'active' : null);
-              liclone.setAttribute('data-slidr-crumb', element);
-              crumbs[element].target = liclone;
+              liclone.setAttribute('data-' + breadcrumbs.cls, element);
+              crumbs[element].el = liclone;
             }
             ulclone.appendChild(liclone);
           };
@@ -464,7 +467,7 @@
       var init = lookup(fx.animation, [trans, 'init']) || {};
       var s = slides.get(_, el);
       if (!s.initialized) {
-        var display = css(s.target, 'display');
+        var display = css(s.el, 'display');
         extend(init, {
           'display': (display === 'none') ? 'block' : display,
           'visibility': 'visible',
@@ -475,7 +478,7 @@
         });
         s.initialized = true;
       }
-      css(s.target, init);
+      css(s.el, init);
     },
 
     // Properties defining animation support.
@@ -548,18 +551,18 @@
         'z-index': opt_z || (type === 'in' ? '1': '0'),
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
-      var target = opt_target || slides.get(_, el).target;
+      var el = opt_target || slides.get(_, el).el;
       if (fx.supported[trans] && fx.timing[trans]) {
         var name = fx.name(_, trans, type, dir);
         var keyframe = lookup(fx.animation, [trans, type, dir]);
         if (keyframe && dir) {
-          var size = css(target, (dir === 'up' || dir === 'down') ? 'height' : 'width');
+          var size = css(el, (dir === 'up' || dir === 'down') ? 'height' : 'width');
           var opacity = _.settings['fading'] ? '0' : '1';
           keyframe(name, size, opacity);
         }
         anim['animation'] = fx.timing[trans](name);
       }
-      css(target, anim);
+      css(el, anim);
     }
   };
 
@@ -609,9 +612,9 @@
           h = size.setHeight(_, 0, d.borderbox);
           w = size.setWidth(_, 0, d.borderbox);
         } else if (slides.get(_, _.current)) {
-          var target = slides.get(_, _.current).target;
-          var height = css(target, 'height');
-          var width = css(target, 'width');
+          var el = slides.get(_, _.current).el;
+          var height = css(el, 'height');
+          var width = css(el, 'width');
           if (d.height && h != height) h = size.setHeight(_, height, d.borderbox);
           if (d.width && w != width) w = size.setWidth(_, width, d.borderbox);
         }
@@ -692,14 +695,14 @@
   };
 
   // The Slidr constructor.
-  var Slidr = function(id, target, settings) {
+  var Slidr = function(id, el, settings) {
 
     var _ = {
       // Slidr id.
       id: id,
 
       // Reference to the Slidr element.
-      slidr: target,
+      slidr: el,
 
       // Reference to the Slidr breadcrumbs element.
       breadcrumbs: null,
@@ -739,7 +742,7 @@
        * @param {string} opt_start `data-slidr` id to start on.
        * @return {this}
        */
-      start: function(opt_start) {
+      'start': function(opt_start) {
         actions.start(_, opt_start);
         return this;
       },
@@ -749,7 +752,7 @@
        * @param {string} dir 'up', 'down', 'left' or 'right'.
        * @return {boolean}
        */
-      canSlide: function(dir) {
+      'canSlide': function(dir) {
         return actions.canSlide(_, dir);
       },
 
@@ -758,7 +761,7 @@
        * @param {string} dir slide 'up', 'down', 'left', or 'right'.
        * @return {this}
        */
-      slide: function(dir) {
+      'slide': function(dir) {
         actions.slide(_, dir);
         return this;
       },
@@ -771,7 +774,7 @@
        * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
        * @return {this}
        */
-      add: function(direction, ids, opt_transition, opt_overwrite) {
+      'add': function(direction, ids, opt_transition, opt_overwrite) {
         actions.add(_, direction, ids, opt_transition, opt_overwrite);
         return this;
       },
@@ -782,7 +785,7 @@
        * @param {int} msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
        * @param {string} opt_start The `data-slidr` id to start at (only works if auto was called to start the Slidr).
        */
-      auto: function(direction, msec, opt_start) {
+      'auto': function(direction, msec, opt_start) {
         actions.start(_, opt_start);
         actions.auto(_, direction || 'right', msec || 5000);
         return this;
@@ -791,7 +794,7 @@
       /**
        * Stop auto transition if it's turned on.
        */
-      stop: function() {
+      'stop': function() {
         actions.stop(_);
         return this;
       },
@@ -799,7 +802,7 @@
       /**
        * Toggle breadcrumbs.
        */
-      breadcrumbs: function() {
+      'breadcrumbs': function() {
         actions.breadcrumbs(_);
         return this;
       }
@@ -826,7 +829,7 @@
      * Available transitions.
      * @return {Array} of transitions.
      */
-    transitions: function() {
+    'transitions': function() {
       return transition.available.slice(0);
     },
 
@@ -835,13 +838,13 @@
      * @param {string} id The element id to turn into a Slidr.
      * @param {Object} opt_settings Settings to apply.
      */
-    create: function(id, opt_settings) {
-      var target = document.getElementById(id);
-      if (!target) {
+    'create': function(id, opt_settings) {
+      var el = document.getElementById(id);
+      if (!el) {
         console.warn('[Slidr] Could not find element with id: ' + id + '.');
         return;
       }
-      INSTANCES[id] = INSTANCES[id] || new Slidr(id, target, extend(opt_settings || {}, DEFAULTS));
+      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, extend(opt_settings || {}, DEFAULTS));
       return INSTANCES[id];
     }
   };
