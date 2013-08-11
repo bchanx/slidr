@@ -57,6 +57,17 @@
     return el;
   }
 
+  // Set name:value attribute for an element.
+  function setattr(el, name, value) {
+    if (el && el.setAttribute) el.setAttribute(name, value);
+    return el;
+  }
+
+  // Get attribute from an element.
+  function getattr(el, name) {
+    return (el && el.getAttribute) ? el.getAttribute(name) : null;
+  }
+
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
@@ -100,7 +111,7 @@
     // Creates a style rule.
     createStyle: function(name, props) {
       var rule = [name, '{'];
-      for (var p in props) rule.push(p + ':' + props[p] + ';');
+      for (var p in props) rule.push(browser.fix(p, true) + ':' + props[p] + ';');
       rule.push('}');
       browser.addCSSRule(name, rule.join(' '));
     },
@@ -211,8 +222,8 @@
 
     // Get the opoosite direction.
     opposite: function(dir) {
-      return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' :
-        (dir === 'left') ? 'right' : (dir === 'right') ? 'left' : null;
+      return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' : (dir === 'left') ? 'right' :
+        (dir === 'right') ? 'left' : (dir === 'top') ? 'bottom' : (dir === 'bottom') ? 'top' : null;
     }
   };
 
@@ -230,10 +241,12 @@
       if (!_.displayed && slides.get(_, _.start)) {
         _.current = _.start;
         breadcrumbs.create(_);
+        controls.create(_);
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
         _.displayed = true;
         if (_.settings['breadcrumbs']) actions.breadcrumbs(_, 'in')
+        if (_.settings['controls']) actions.controls(_, 'in')
       }
     },
 
@@ -248,6 +261,7 @@
         transition.apply(_, _.current, 'out', outdir, opt_outtrans);
         _.current = el;
         transition.apply(_, el, 'in', indir, opt_intrans);
+        controls.update(_);
         return true;
       }
       return false;
@@ -257,12 +271,10 @@
     find: function(_, opt_asList) {
       var valid = (opt_asList) ? [] : {};
       for (var i = 0, slide, name; slide = _.slidr.childNodes[i]; i++) {
-        if (slide.getAttribute) {
-          name = slide.getAttribute('data-slidr');
-          if (name) {
-            if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
-            else if (!(name in valid)) valid[name] = slide;
-          }
+        name = getattr(slide, 'data-slidr');
+        if (name) {
+          if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
+          else if (!(name in valid)) valid[name] = slide;
         }
       }
       return valid;
@@ -319,6 +331,90 @@
     }
   };
 
+  var controls = {
+
+    // Classname
+    cls: 'slidr-controls',
+
+    // Controllers
+    nav: {
+      'left': null,
+      'right': null,
+      'up': null,
+      'down': null
+    },
+
+    // Create controls container.
+    create: function(_) {
+      if (_.slidr && !_.controls) {
+        _.controls = css(createEl('div', { 'id': _.id + '-' + controls.cls }), {
+          'position': 'absolute',
+          'bottom': '0',
+          'left': '0',
+          'opacity': '0',
+          'z-index': '0',
+          'padding': '10px',
+          'pointer-events': 'none',
+          'width': '75px',
+          'height': '75px'
+        });
+        for (var n in controls.nav) {
+          controls.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls, n), 'data-' + controls.cls, n);
+          _.controls.appendChild(controls.nav[n]);
+        }
+        controls.css(_);
+        _.slidr.appendChild(_.controls);
+        (_.controls.attachEvent) ? _.controls.attachEvent('onclick', controls.onclick(_)) :
+                                   _.controls.addEventListener('click', controls.onclick(_));
+      }
+    },
+
+    // Controls CSS rules.
+    css: function(_) {
+      browser.createStyle('.' + controls.cls, {
+        'pointer-events': 'auto',
+        'cursor': 'pointer',
+        'width': '0',
+        'height': '0',
+        'border': '8px transparent solid',
+        'position': 'absolute',
+        'transition': 'opacity 0.2s linear'
+      });
+      browser.createStyle('.' + controls.cls + '.disabled', {
+        'opacity': '0.2',
+        'cursor': 'auto'
+      });
+      for (var n in controls.nav) {
+        var attr = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
+        var pos = (n === 'left' || n === 'right') ? 'top' : 'left';
+        var style = {};
+        style['border-' + transition.opposite(attr) + '-width'] = '12px';
+        style['border-' + attr + '-width'] = '10px';
+        style['border-' + transition.opposite(attr) + '-color'] = 'white';
+        style[attr] = '0';
+        style[pos] = '50%';
+        style['margin-' + pos] = '-8px';
+        browser.createStyle('.' + controls.cls + '.' + n, style);
+      }
+    },
+
+    // On click callback.
+    onclick: function(_) {
+      return function handler(e) {
+        e = e || window.event;
+        if (!e.target) e.target = e.srcElement;
+        actions.slide(_, getattr(e.target, 'data-' + controls.cls));
+      }
+    },
+
+    // Update controls.
+    update: function(_) {
+      for (var n in controls.nav) {
+        classname(controls.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
+      }
+    }
+  };
+
   var breadcrumbs = {
   
     // Classname
@@ -372,19 +468,19 @@
     // On click callback.
     onclick: function(_) {
       return function handler(e) {
-        if (e.target && e.target.getAttribute) {
-          var el = e.target.getAttribute('data-' + breadcrumbs.cls);
-          if (el && slides.get(_, el) && el !== _.current) {
-            var cur = _.crumbs[_.current];
-            var next = _.crumbs[el];
-            var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
-            var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
-            var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
-                         (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
-            var indir = (transition.get(_, el, 'in', hdir)) ? hdir :
-                        (transition.get(_, el, 'in', vdir)) ? vdir : null;
-            slides.jump(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
-          }
+        e = e || window.event;
+        if (!e.target) e.target = e.srcElement;
+        var el = getattr(e.target, 'data-' + breadcrumbs.cls);
+        if (el && el !== _.current && slides.get(_, el)) {
+          var cur = _.crumbs[_.current];
+          var next = _.crumbs[el];
+          var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
+          var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
+          var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
+                       (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
+          var indir = (transition.get(_, el, 'in', hdir)) ? hdir :
+                      (transition.get(_, el, 'in', vdir)) ? vdir : null;
+          slides.jump(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
         }
       }
     },
@@ -448,7 +544,7 @@
             element = crumbsMap[c + ',' + r];
             if (element) {
               classname(liclone, 'add', 'normal', element === _.current ? 'active' : null);
-              liclone.setAttribute('data-' + breadcrumbs.cls, element);
+              setattr(liclone, 'data-' + breadcrumbs.cls, element);
               crumbs[element].el = liclone;
             }
             ulclone.appendChild(liclone);
@@ -643,6 +739,7 @@
         slides.display(_);
         size.autoResize(_);
         _.started = true;
+        controls.update(_);
       }
     },
 
@@ -689,8 +786,14 @@
 
     // Toggle breadcrumbs.
     breadcrumbs: function(_, opt_type) {
-      if (_.breadcrumbs && _.displayed) fx.animate(_, null, 'fade',
-        opt_type || (css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out'), null, _.breadcrumbs, '2', 'none');
+      if (_.breadcrumbs && _.displayed && _.breadcrumbs) fx.animate(_, null, 'fade',
+        opt_type || (css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out'), null, _.breadcrumbs, '3', 'none');
+    },
+
+    // Toggle controls.
+    controls: function(_, opt_type) {
+      if (_.controls && _.displayed && _.controls) fx.animate(_, null, 'fade',
+        opt_type || (css(_.controls, 'opacity') === '0' ? 'in' : 'out'), null, _.controls, '2', 'none');
     }
   };
 
@@ -706,6 +809,9 @@
 
       // Reference to the Slidr breadcrumbs element.
       breadcrumbs: null,
+
+      // Reference to the Slidr controls element.
+      controls: null,
 
       // Settings for this Slidr.
       settings: settings,
@@ -805,6 +911,14 @@
       'breadcrumbs': function() {
         actions.breadcrumbs(_);
         return this;
+      },
+
+      /**
+       * Toggle controls.
+       */
+      'controls': function() {
+        actions.controls(_);
+        return this;
       }
     };
 
@@ -820,7 +934,8 @@
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
     'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
     'clipping': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
-    'breadcrumbs': false          // Show or hide breadcrumbs on start(). `true` or `false`.
+    'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
+    'controls': false             // Show or hide controls on start(). `true` or `false`.
   };
 
   // Global API.
