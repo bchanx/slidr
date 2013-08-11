@@ -201,152 +201,6 @@
     }
   };
 
-  var breadcrumbs = {
-
-    // Initialize breadcrumbs.
-    init: function(_) {
-      if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = document.createElement('div');
-        _.breadcrumbs.id = _.id + '-slidr-breadcrumbs';
-        breadcrumbs.css(_);
-        _.slidr.appendChild(_.breadcrumbs);
-        (_.breadcrumbs.attachEvent) ? _.breadcrumbs.attachEvent('onclick', breadcrumbs.onclick(_)) :
-                                      _.breadcrumbs.addEventListener('click', breadcrumbs.onclick(_));
-      }
-    },
-
-    // Breadcrumbs CSS.
-    css: function(_) {
-      css(_.breadcrumbs, {
-        'position': 'absolute',
-        'bottom': '0',
-        'right': '0',
-        'opacity': '0',
-        'z-index': '0',
-        'padding': '10px',
-        'pointer-events': 'none',
-      });
-      browser.createStyle('.slidr-breadcrumbs', {
-        'font-size': '0',
-        'line-height': '0'
-      });
-      browser.createStyle('.slidr-breadcrumbs li', {
-        'width': '10px',
-        'height': '10px',
-        'display': 'inline-block',
-        'margin': '3px',
-      });
-      browser.createStyle('.slidr-breadcrumbs li.normal', {
-        'border-radius': '100%',
-        'border': '1px white solid',
-        'cursor': 'pointer',
-        'pointer-events': 'auto',
-      });
-      browser.createStyle('.slidr-breadcrumbs li.active', {
-        'width': '12px',
-        'height': '12px',
-        'margin': '2px',
-        'background-color': 'white'
-      });
-    },
-
-    // On click callback.
-    onclick: function(_) {
-      return function handler(e) {
-        if (e.target && e.target.getAttribute) {
-          var target = e.target.getAttribute('data-slidr-crumb');
-          if (target && slides.get(_, target)) {
-            var cur = _.crumbs[_.current];
-            var next = _.crumbs[target];
-            var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
-            var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
-            var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
-                         (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
-            var indir = (transition.get(_, target, 'in', hdir)) ? hdir :
-                        (transition.get(_, target, 'in', vdir)) ? vdir : null;
-            slides.goto(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
-          }
-        }
-      }
-    },
-
-    // Find breadcrumbs.
-    find: function(_, crumbs, bounds, el, x, y) {
-      if (el) {
-        if (!crumbs[el]) {
-          crumbs[el] = { x: x, y: y };
-          if (x < bounds.x.min) bounds.x.min = x;
-          if (x > bounds.x.max) bounds.x.max = x;
-          if (y < bounds.y.min) bounds.y.min = y;
-          if (y > bounds.y.max) bounds.y.max = y;
-        }
-        var target = slides.get(_, el);
-        if (!crumbs[el].right) {
-          crumbs[el].right = true;
-          breadcrumbs.find(_, crumbs, bounds, target.right, x + 1, y);
-        }
-        if (!crumbs[el].up) {
-          crumbs[el].up = true;
-          breadcrumbs.find(_, crumbs, bounds, target.up, x, y + 1);
-        }
-        if (!crumbs[el].left) {
-          crumbs[el].left = true;
-          breadcrumbs.find(_, crumbs, bounds, target.left, x - 1, y);
-        }
-        if (!crumbs[el].down) {
-          crumbs[el].down = true;
-          breadcrumbs.find(_, crumbs, bounds, target.down, x, y - 1);
-        }
-      }
-    },
-
-    // Update breadcrumbs.
-    update: function(_, el, type) {
-      if (type === 'in') _.crumbs[el].target.classList.add('active');
-      else _.crumbs[el].target.classList.remove('active');
-    },
-
-    // Create breadcrumbs.
-    create: function(_) {
-      breadcrumbs.init(_);
-      if (_.breadcrumbs) {
-        var crumbs = {};
-        var bounds = { x: { min: 0, max: 0 }, y: { min: 0, max: 0} };
-        breadcrumbs.find(_, crumbs, bounds, _.start, 0, 0);
-        bounds.x.modifier = 0 - bounds.x.min;
-        bounds.y.modifier = 0 - bounds.y.min;
-        var crumbsMap = {};
-        for (var el in crumbs) {
-          crumbs[el].x += bounds.x.modifier;
-          crumbs[el].y += bounds.y.modifier;
-          crumbsMap[crumbs[el].x + ',' + crumbs[el].y] = el;
-        }
-        var rows = bounds.y.max - bounds.y.min + 1;
-        var columns = bounds.x.max - bounds.x.min + 1;
-        while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
-        var ul = document.createElement('ul');
-        ul.classList.add('slidr-breadcrumbs');
-        var li = document.createElement('li');
-        for (var r = rows - 1; r >= 0; r--) {
-          var ulclone = ul.cloneNode(false);
-          for (var c = 0; c < columns; c++) {
-            var liclone = li.cloneNode(false);
-            var element = crumbsMap[c + ',' + r];
-            if (element) {
-              liclone.classList.add('normal');
-              liclone.setAttribute('data-slidr-crumb', element);
-              if (element === _.current) liclone.classList.add('active');
-              crumbs[element].target = liclone;
-            }
-            ulclone.appendChild(liclone);
-          };
-          _.breadcrumbs.appendChild(ulclone);
-        }
-        _.crumbs = crumbs;
-      }
-    },
-  };
-
   var slides = {
 
     // Get slide metadata.
@@ -445,69 +299,152 @@
         fx.init(_, current, trans);
         _.start = (!_.start) ? current : _.start;
       }
-      if (_.started && !_.displayed) slides.display(_);
-      else breadcrumbs.create(_);
+      if (_.started) (!_.displayed) ? slides.display(_) : breadcrumbs.create(_);
       return true;
     }
   };
 
-  var size = {
+  var breadcrumbs = {
 
-    // Check whether width, height, and borderbox should by dynamically updated.
-    dynamic: function(_) {
-      var clone = _.slidr.cloneNode(false);
-      var probe = document.createElement('div');
-      probe.setAttribute('style', 'width: 42px; height: 42px;');
-      clone.setAttribute('style', 'position: absolute; opacity: 0');
-      clone.appendChild(probe);
-      _.slidr.parentNode.insertBefore(clone, _.slidr);
-      var borderbox = css(clone, 'box-sizing') === 'border-box';
-      var dynamic = {
-        width: css(clone, 'width') - 42 === (borderbox ? size.widthPad(_) : 0),
-        height: css(clone, 'height') - 42 === (borderbox ? size.heightPad(_) : 0),
-        borderbox: borderbox
-      };
-      _.slidr.parentNode.removeChild(clone);
-      return dynamic;
-    },
-
-    // Grabs the Slidr width/height padding.
-    widthPad: function(_) {
-      return css(_.slidr, 'padding-left') + css(_.slidr, 'padding-right');
-    },
-    heightPad: function(_) {
-      return css(_.slidr, 'padding-top') + css(_.slidr, 'padding-bottom');
+    // Initialize breadcrumbs container.
+    init: function(_) {
+      if (_.slidr && !_.breadcrumbs) {
+        _.breadcrumbs = document.createElement('div');
+        _.breadcrumbs.id = _.id + '-slidr-breadcrumbs';
+        css(_.breadcrumbs, {
+          'position': 'absolute',
+          'bottom': '0',
+          'right': '0',
+          'opacity': '0',
+          'z-index': '0',
+          'padding': '10px',
+          'pointer-events': 'none',
+        });
+        breadcrumbs.css();
+        _.slidr.appendChild(_.breadcrumbs);
+        (_.breadcrumbs.attachEvent) ? _.breadcrumbs.attachEvent('onclick', breadcrumbs.onclick(_)) :
+                                      _.breadcrumbs.addEventListener('click', breadcrumbs.onclick(_));
+      }
     },
 
-    // Sets the width/height of our Slidr container.
-    setWidth: function(_, w, borderbox) {
-      css(_.slidr, { width: w + (borderbox ? size.widthPad(_) : 0) + 'px' }); return w;
-    },
-    setHeight: function(_, h, borderbox) {
-      css(_.slidr, { height: h + (borderbox ? size.heightPad(_) : 0) + 'px' }); return h;
+    // Breadcrumbs CSS rules.
+    css: function() {
+      browser.createStyle('.slidr-breadcrumbs', {
+        'font-size': '0',
+        'line-height': '0'
+      });
+      browser.createStyle('.slidr-breadcrumbs li', {
+        'width': '10px',
+        'height': '10px',
+        'display': 'inline-block',
+        'margin': '3px',
+      });
+      browser.createStyle('.slidr-breadcrumbs li.normal', {
+        'border-radius': '100%',
+        'border': '1px white solid',
+        'cursor': 'pointer',
+        'pointer-events': 'auto',
+      });
+      browser.createStyle('.slidr-breadcrumbs li.active', {
+        'width': '12px',
+        'height': '12px',
+        'margin': '2px',
+        'background-color': 'white'
+      });
     },
 
-    // Monitor our Slidr and auto resize if necessary.
-    autoResize: function(_) {
-      var h = 0;
-      var w = 0;
-      var d = size.dynamic(_);
-      var timerId = setInterval((function watch() {
-        if (!contains(document, _.slidr)) {
-          clearInterval(timerId);
-        } else if (css(_.slidr, 'visibility') === 'hidden') {
-          h = size.setHeight(_, 0, d.borderbox);
-          w = size.setWidth(_, 0, d.borderbox);
-        } else if (slides.get(_, _.current)) {
-          var target = slides.get(_, _.current).target;
-          var height = css(target, 'height');
-          var width = css(target, 'width');
-          if (d.height && h != height) h = size.setHeight(_, height, d.borderbox);
-          if (d.width && w != width) w = size.setWidth(_, width, d.borderbox);
+    // On click callback.
+    onclick: function(_) {
+      return function handler(e) {
+        if (e.target && e.target.getAttribute) {
+          var target = e.target.getAttribute('data-slidr-crumb');
+          if (target && slides.get(_, target)) {
+            var cur = _.crumbs[_.current];
+            var next = _.crumbs[target];
+            var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
+            var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
+            var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
+                         (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
+            var indir = (transition.get(_, target, 'in', hdir)) ? hdir :
+                        (transition.get(_, target, 'in', vdir)) ? vdir : null;
+            slides.goto(_, target, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
+          }
         }
-        return watch;
-      })(), 250);
-    }
+      }
+    },
+
+    // Breadcrumb offsets.
+    offsets: {
+      'right': { x: 1, y: 0 },
+      'up': { x: 0, y: 1 },
+      'left': { x: -1, y: 0 },
+      'down': { x: 0, y: -1 }
+    },
+
+    // Find breadcrumbs.
+    find: function(_, crumbs, bounds, el, x, y) {
+      if (el) {
+        if (!crumbs[el]) {
+          crumbs[el] = { x: x, y: y };
+          if (x < bounds.x.min) bounds.x.min = x;
+          if (x > bounds.x.max) bounds.x.max = x;
+          if (y < bounds.y.min) bounds.y.min = y;
+          if (y > bounds.y.max) bounds.y.max = y;
+        }
+        var target = slides.get(_, el);
+        for (var o in breadcrumbs.offsets) {
+          if (target[o] && !crumbs[target[o]]) {
+            breadcrumbs.find(_, crumbs, bounds, target[o], x + breadcrumbs.offsets[o].x, y + breadcrumbs.offsets[o].y);
+          }
+        }
+      }
+    },
+
+    // Update breadcrumbs.
+    update: function(_, el, type) {
+      if (type === 'in') _.crumbs[el].target.classList.add('active');
+      else _.crumbs[el].target.classList.remove('active');
+    },
+
+    // Create breadcrumbs.
+    create: function(_) {
+      breadcrumbs.init(_);
+      if (_.breadcrumbs) {
+        var crumbs = {};
+        var bounds = { x: { min: 0, max: 0 }, y: { min: 0, max: 0 } };
+        breadcrumbs.find(_, crumbs, bounds, _.start, 0, 0);
+        bounds.x.modifier = 0 - bounds.x.min;
+        bounds.y.modifier = 0 - bounds.y.min;
+        var crumbsMap = {};
+        for (var el in crumbs) {
+          crumbs[el].x += bounds.x.modifier;
+          crumbs[el].y += bounds.y.modifier;
+          crumbsMap[crumbs[el].x + ',' + crumbs[el].y] = el;
+        }
+        var rows = bounds.y.max - bounds.y.min + 1;
+        var columns = bounds.x.max - bounds.x.min + 1;
+        while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
+        var ul = document.createElement('ul');
+        ul.classList.add('slidr-breadcrumbs');
+        var li = document.createElement('li');
+        for (var r = rows - 1, ulclone; r >= 0; r--) {
+          ulclone = ul.cloneNode(false);
+          for (var c = 0, liclone, element; c < columns; c++) {
+            liclone = li.cloneNode(false);
+            element = crumbsMap[c + ',' + r];
+            if (element) {
+              liclone.classList.add('normal');
+              liclone.setAttribute('data-slidr-crumb', element);
+              if (element === _.current) liclone.classList.add('active');
+              crumbs[element].target = liclone;
+            }
+            ulclone.appendChild(liclone);
+          };
+          _.breadcrumbs.appendChild(ulclone);
+        }
+        _.crumbs = crumbs;
+      }
+    },
   };
 
   var fx = {
@@ -617,6 +554,65 @@
       }
       css(target, anim);
     },
+  };
+
+  var size = {
+
+    // Check whether width, height, and borderbox should by dynamically updated.
+    dynamic: function(_) {
+      var clone = _.slidr.cloneNode(false);
+      var probe = document.createElement('div');
+      probe.setAttribute('style', 'width: 42px; height: 42px;');
+      clone.setAttribute('style', 'position: absolute; opacity: 0');
+      clone.appendChild(probe);
+      _.slidr.parentNode.insertBefore(clone, _.slidr);
+      var borderbox = css(clone, 'box-sizing') === 'border-box';
+      var dynamic = {
+        width: css(clone, 'width') - 42 === (borderbox ? size.widthPad(_) : 0),
+        height: css(clone, 'height') - 42 === (borderbox ? size.heightPad(_) : 0),
+        borderbox: borderbox
+      };
+      _.slidr.parentNode.removeChild(clone);
+      return dynamic;
+    },
+
+    // Grabs the Slidr width/height padding.
+    widthPad: function(_) {
+      return css(_.slidr, 'padding-left') + css(_.slidr, 'padding-right');
+    },
+    heightPad: function(_) {
+      return css(_.slidr, 'padding-top') + css(_.slidr, 'padding-bottom');
+    },
+
+    // Sets the width/height of our Slidr container.
+    setWidth: function(_, w, borderbox) {
+      css(_.slidr, { width: w + (borderbox ? size.widthPad(_) : 0) + 'px' }); return w;
+    },
+    setHeight: function(_, h, borderbox) {
+      css(_.slidr, { height: h + (borderbox ? size.heightPad(_) : 0) + 'px' }); return h;
+    },
+
+    // Monitor our Slidr and auto resize if necessary.
+    autoResize: function(_) {
+      var h = 0;
+      var w = 0;
+      var d = size.dynamic(_);
+      var timerId = setInterval((function watch() {
+        if (!contains(document, _.slidr)) {
+          clearInterval(timerId);
+        } else if (css(_.slidr, 'visibility') === 'hidden') {
+          h = size.setHeight(_, 0, d.borderbox);
+          w = size.setWidth(_, 0, d.borderbox);
+        } else if (slides.get(_, _.current)) {
+          var target = slides.get(_, _.current).target;
+          var height = css(target, 'height');
+          var width = css(target, 'width');
+          if (d.height && h != height) h = size.setHeight(_, height, d.borderbox);
+          if (d.width && w != width) w = size.setWidth(_, width, d.borderbox);
+        }
+        return watch;
+      })(), 250);
+    }
   };
 
   var actions = {
