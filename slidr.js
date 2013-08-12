@@ -120,7 +120,7 @@
     createKeyframe: function(name, rules) {
       var animation = browser.fix('animation', true);
       if (animation) {
-        var prefix = (/^-[a-z]+-/gi.test(animation)) ? /^-[a-z]+-/gi.exec(animation)[0] : '';
+        var prefix = (animation.lastIndexOf('-') > 0) ? animation.slice(0, animation.lastIndexOf('-') + 1) : '';
         var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
         for (var r in rules) {
           rule.push(r + '% {');
