@@ -355,6 +355,7 @@
           'z-index': '0',
           'padding': '10px',
           'pointer-events': 'none',
+          'box-sizing': 'border-box',
           'width': '75px',
           'height': '75px'
         });
@@ -378,6 +379,7 @@
         'height': '0',
         'border': '8px transparent solid',
         'position': 'absolute',
+        'box-sizing': 'border-box',
         'transition': 'opacity 0.2s linear'
       });
       browser.createStyle('.' + controls.cls + '.disabled', {
