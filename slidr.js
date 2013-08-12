@@ -245,8 +245,8 @@
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
         _.displayed = true;
-        if (_.settings['breadcrumbs']) actions.breadcrumbs(_, 'in')
-        if (_.settings['controls']) actions.controls(_, 'in')
+        if (_.settings['breadcrumbs']) actions.breadcrumbs(_)
+        if (_.settings['controls']) actions.controls(_, _.settings['controls'])
       }
     },
 
@@ -334,7 +334,11 @@
   var controls = {
 
     // Classname
-    cls: 'slidr-controls',
+    cls: {
+      ctrlr: 'slidr-controller',
+      ctrl: 'slidr-control',
+      icon: 'slidr-control-icon'
+    },
 
     // Controllers
     nav: {
@@ -347,20 +351,16 @@
     // Create controls container.
     create: function(_) {
       if (_.slidr && !_.controls) {
-        _.controls = css(createEl('div', { 'id': _.id + '-' + controls.cls }), {
-          'position': 'absolute',
-          'bottom': '0',
-          'left': '0',
+        _.controls = css(classname(
+          createEl('div', { 'id': _.id + '-' + controls.cls.ctrlr }), 'add', controls.cls.ctrlr), {
           'opacity': '0',
           'z-index': '0',
-          'padding': '10px',
-          'pointer-events': 'none',
-          'box-sizing': 'border-box',
-          'width': '75px',
-          'height': '75px'
+          'pointer-events': 'none'
         });
         for (var n in controls.nav) {
-          controls.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls, n), 'data-' + controls.cls, n);
+          controls.nav[n] = 
+            setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
+          controls.nav[n].appendChild(classname(createEl('div'), 'add', controls.cls.icon));
           _.controls.appendChild(controls.nav[n]);
         }
         controls.css(_);
@@ -372,30 +372,68 @@
 
     // Controls CSS rules.
     css: function(_) {
-      browser.createStyle('.' + controls.cls, {
+      browser.createStyle('.' + controls.cls.ctrlr, {
+        'position': 'absolute',
+        'bottom': '0',
+        'right': '0',
+        'padding': '10px',
+        'box-sizing': 'border-box',
+        'width': '75px',
+        'height': '75px'
+      });
+      browser.createStyle('.' + controls.cls.ctrlr + '.breadcrumbs', {
+        'left': '0',
+        'right': 'auto'
+      });
+      browser.createStyle('.' + controls.cls.ctrlr + '.border', {
+        'width': '100%',
+        'height': '100%'
+      });
+      browser.createStyle('.' + controls.cls.ctrl, {
+        'position': 'absolute',
         'pointer-events': 'auto',
         'cursor': 'pointer',
+        'transition': 'opacity 0.2s linear'
+      });
+      browser.createStyle('.' + controls.cls.ctrl + '.disabled', {
+        'opacity': '0.1',
+        'cursor': 'auto'
+      });
+      browser.createStyle('.' + controls.cls.icon, {
+        'pointer-events': 'none',
         'width': '0',
         'height': '0',
         'border': '8px transparent solid',
-        'position': 'absolute',
-        'transition': 'opacity 0.2s linear'
+        'position': 'absolute'
       });
-      browser.createStyle('.' + controls.cls + '.disabled', {
-        'opacity': '0.2',
-        'cursor': 'auto'
-      });
+
       for (var n in controls.nav) {
-        var attr = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
-        var pos = (n === 'left' || n === 'right') ? 'top' : 'left';
-        var style = {};
-        style['border-' + transition.opposite(attr) + '-width'] = '12px';
-        style['border-' + attr + '-width'] = '10px';
-        style['border-' + transition.opposite(attr) + '-color'] = 'white';
-        style[attr] = '0';
-        style[pos] = '50%';
-        style['margin-' + pos] = '-8px';
-        browser.createStyle('.' + controls.cls + '.' + n, style);
+        var horizontal = (n === 'left' || n === 'right');
+        var pos = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
+        var dir = horizontal ? 'top' : 'left';
+
+        var ctrlStyle = {
+          'width': horizontal ? '22px': '16px',
+          'height': horizontal ? '16px' : '22px'
+        };
+        ctrlStyle[pos] = '0';
+        ctrlStyle[dir] = '50%';
+        ctrlStyle['margin-' + dir] = '-8px';
+        browser.createStyle('.' + controls.cls.ctrl + '.' + n, ctrlStyle);
+
+        var iconStyle = {};
+        iconStyle['border-' + transition.opposite(pos) + '-width'] = '12px';
+        iconStyle['border-' + pos + '-width'] = '10px';
+        iconStyle['border-' + transition.opposite(pos) + '-color'] = 'white';
+        iconStyle[pos] = '0';
+        iconStyle[dir] = '50%';
+        iconStyle['margin-' + dir] = '-8px';
+        browser.createStyle('.' + controls.cls.ctrl + '.' + n + ' .' + controls.cls.icon, iconStyle);
+
+        var borderStyle = {};
+        borderStyle[horizontal ? 'height': 'width'] = '100%';
+        borderStyle['margin-' + dir] = horizontal ? '-25%' : '-50%';
+        browser.createStyle('.' + controls.cls.ctrlr + '.border' + ' .' + controls.cls.ctrl + '.' + n, borderStyle);
       }
     },
 
@@ -404,7 +442,7 @@
       return function handler(e) {
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
-        actions.slide(_, getattr(e.target, 'data-' + controls.cls));
+        actions.slide(_, getattr(e.target, 'data-' + controls.cls.ctrl));
       }
     },
 
@@ -432,7 +470,7 @@
           'z-index': '0',
           'padding': '10px',
           'pointer-events': 'none',
-          'box-sizing': 'border-box',
+          'box-sizing': 'border-box'
         });
         breadcrumbs.css();
         _.slidr.appendChild(_.breadcrumbs);
@@ -787,15 +825,22 @@
     },
 
     // Toggle breadcrumbs.
-    breadcrumbs: function(_, opt_type) {
-      if (_.breadcrumbs && _.displayed) fx.animate(_, null, 'fade',
-        opt_type || (css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out'), null, _.breadcrumbs, '3', 'none');
+    breadcrumbs: function(_) {
+      if (_.breadcrumbs && _.displayed) {
+        var type = css(_.breadcrumbs, 'opacity') === '0' ? 'in' : 'out';
+        fx.animate(_, null, 'fade', type, null, _.breadcrumbs, '3', 'none');
+        if (_.controls) classname(_.controls, type === 'in' ? 'add' : 'rm', 'breadcrumbs');
+      }
     },
 
     // Toggle controls.
-    controls: function(_, opt_type) {
-      if (_.controls && _.displayed) fx.animate(_, null, 'fade',
-        opt_type || (css(_.controls, 'opacity') === '0' ? 'in' : 'out'), null, _.controls, '2', 'none');
+    controls: function(_, opt_scheme) {
+      if (_.controls && _.displayed) {
+        if (opt_scheme === 'border') classname(_.controls, 'add', 'border');
+        if (opt_scheme === 'corner') classname(_.controls, 'rm', 'border');
+        var type = (opt_scheme || css(_.controls, 'opacity') === '0') ? 'in' : 'out';
+        fx.animate(_, null, 'fade', type, null, _.controls, '2', 'none');
+      }
     }
   };
 
@@ -917,9 +962,10 @@
 
       /**
        * Toggle controls.
+       * @param {string?} opt_scheme Change the control scheme layout to either `corner` or `border`.
        */
-      'controls': function() {
-        actions.controls(_);
+      'controls': function(opt_scheme) {
+        actions.controls(_, opt_scheme);
         return this;
       }
     };
@@ -937,7 +983,7 @@
     'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
     'clipping': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
-    'controls': false             // Show or hide controls on start(). `true` or `false`.
+    'controls': ''                // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
   };
 
   // Global API.
