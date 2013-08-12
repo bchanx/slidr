@@ -259,9 +259,9 @@
     // Jump to a target slide.
     jump: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
       if (_.current && el) {
+        transition.apply(_, el, 'in', indir, opt_intrans);
         transition.apply(_, _.current, 'out', outdir, opt_outtrans);
         _.current = el;
-        transition.apply(_, el, 'in', indir, opt_intrans);
         controls.update(_);
         return true;
       }
