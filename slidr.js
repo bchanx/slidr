@@ -98,9 +98,10 @@
     }()),
 
     // Adds a CSS rule to our Slidr stylesheet.
-    addCSSRule: function(name, rule) {
+    addCSSRule: function(name, rule, opt_safe) {
       for (var r = 0, cssRule; cssRule = browser.styleSheet.cssRules[r]; r++) {
         if (cssRule.name == name || cssRule.selectorText === name) {
+          if (!!opt_safe || cssRule.cssText.replace(/\s/gi, '') === rule.replace(/\s/gi, '')) return;
           browser.styleSheet.deleteRule(r);
           break;
         }
@@ -109,11 +110,11 @@
     },
 
     // Creates a style rule.
-    createStyle: function(name, props) {
+    createStyle: function(name, props, opt_safe) {
       var rule = [name, '{'];
       for (var p in props) rule.push(browser.fix(p, true) + ':' + props[p] + ';');
       rule.push('}');
-      browser.addCSSRule(name, rule.join(' '));
+      browser.addCSSRule(name, rule.join(' '), opt_safe);
     },
 
     // Creates a keyframe animation rule.
@@ -340,14 +341,6 @@
       icon: 'slidr-control-icon'
     },
 
-    // Controllers
-    nav: {
-      'left': null,
-      'right': null,
-      'up': null,
-      'down': null
-    },
-
     // Create controls container.
     create: function(_) {
       if (_.slidr && !_.controls) {
@@ -357,11 +350,10 @@
           'z-index': '0',
           'pointer-events': 'none'
         });
-        for (var n in controls.nav) {
-          controls.nav[n] = 
-            setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
-          controls.nav[n].appendChild(classname(createEl('div'), 'add', controls.cls.icon));
-          _.controls.appendChild(controls.nav[n]);
+        for (var n in _.nav) {
+          _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
+          _.nav[n].appendChild(classname(createEl('div'), 'add', controls.cls.icon));
+          _.controls.appendChild(_.nav[n]);
         }
         controls.css(_);
         _.slidr.appendChild(_.controls);
@@ -380,60 +372,60 @@
         'box-sizing': 'border-box',
         'width': '75px',
         'height': '75px'
-      });
+      }, true);
       browser.createStyle('.' + controls.cls.ctrlr + '.breadcrumbs', {
         'left': '0',
         'right': 'auto'
-      });
+      }, true);
       browser.createStyle('.' + controls.cls.ctrlr + '.border', {
         'width': '100%',
         'height': '100%'
-      });
+      }, true);
       browser.createStyle('.' + controls.cls.ctrl, {
         'position': 'absolute',
         'pointer-events': 'auto',
         'cursor': 'pointer',
         'transition': 'opacity 0.2s linear'
-      });
+      }, true);
       browser.createStyle('.' + controls.cls.ctrl + '.disabled', {
         'opacity': '0.1',
         'cursor': 'auto'
-      });
+      }, true);
       browser.createStyle('.' + controls.cls.icon, {
         'pointer-events': 'none',
         'width': '0',
         'height': '0',
         'border': '8px transparent solid',
         'position': 'absolute'
-      });
+      }, true);
 
-      for (var n in controls.nav) {
+      for (var n in _.nav) {
         var horizontal = (n === 'left' || n === 'right');
         var pos = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
         var dir = horizontal ? 'top' : 'left';
 
-        var ctrlStyle = {
+        var ctrl = {
           'width': horizontal ? '22px': '16px',
           'height': horizontal ? '16px' : '22px'
         };
-        ctrlStyle[pos] = '0';
-        ctrlStyle[dir] = '50%';
-        ctrlStyle['margin-' + dir] = '-8px';
-        browser.createStyle('.' + controls.cls.ctrl + '.' + n, ctrlStyle);
+        ctrl[pos] = '0';
+        ctrl[dir] = '50%';
+        ctrl['margin-' + dir] = '-8px';
+        browser.createStyle('.' + controls.cls.ctrl + '.' + n, ctrl, true);
 
-        var iconStyle = {};
-        iconStyle['border-' + transition.opposite(pos) + '-width'] = '12px';
-        iconStyle['border-' + pos + '-width'] = '10px';
-        iconStyle['border-' + transition.opposite(pos) + '-color'] = 'white';
-        iconStyle[pos] = '0';
-        iconStyle[dir] = '50%';
-        iconStyle['margin-' + dir] = '-8px';
-        browser.createStyle('.' + controls.cls.ctrl + '.' + n + ' .' + controls.cls.icon, iconStyle);
+        var icon = {};
+        icon['border-' + transition.opposite(pos) + '-width'] = '12px';
+        icon['border-' + pos + '-width'] = '10px';
+        icon['border-' + transition.opposite(pos) + '-color'] = 'white';
+        icon[pos] = '0';
+        icon[dir] = '50%';
+        icon['margin-' + dir] = '-8px';
+        browser.createStyle('.' + controls.cls.ctrl + '.' + n + ' .' + controls.cls.icon, icon, true);
 
-        var borderStyle = {};
-        borderStyle[horizontal ? 'height': 'width'] = '100%';
-        borderStyle['margin-' + dir] = horizontal ? '-25%' : '-50%';
-        browser.createStyle('.' + controls.cls.ctrlr + '.border' + ' .' + controls.cls.ctrl + '.' + n, borderStyle);
+        var border = {};
+        border[horizontal ? 'height': 'width'] = '100%';
+        border['margin-' + dir] = horizontal ? '-25%' : '-50%';
+        browser.createStyle('.' + controls.cls.ctrlr + '.border' + ' .' + controls.cls.ctrl + '.' + n, border, true);
       }
     },
 
@@ -448,8 +440,8 @@
 
     // Update controls.
     update: function(_) {
-      for (var n in controls.nav) {
-        classname(controls.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
+      for (var n in _.nav) {
+        classname(_.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
       }
     }
   };
@@ -484,25 +476,25 @@
       browser.createStyle('.' + breadcrumbs.cls, {
         'font-size': '0',
         'line-height': '0'
-      });
+      }, true);
       browser.createStyle('.' + breadcrumbs.cls + ' li', {
         'width': '10px',
         'height': '10px',
         'display': 'inline-block',
         'margin': '3px'
-      });
+      }, true);
       browser.createStyle('.' + breadcrumbs.cls + ' li.normal', {
         'border-radius': '100%',
         'border': '1px white solid',
         'cursor': 'pointer',
         'pointer-events': 'auto'
-      });
+      }, true);
       browser.createStyle('.' + breadcrumbs.cls + ' li.active', {
         'width': '12px',
         'height': '12px',
         'margin': '2px',
         'background-color': 'white'
-      });
+      }, true);
     },
 
     // On click callback.
@@ -857,7 +849,7 @@
       // Reference to the Slidr breadcrumbs element.
       breadcrumbs: null,
 
-      // Reference to the Slidr controls element.
+      // Reference to the Slidr controller element.
       controls: null,
 
       // Settings for this Slidr.
@@ -885,7 +877,10 @@
       trans: {},
 
       // A {mapping} of slides and their (x, y) position.
-      crumbs: {}
+      crumbs: {},
+
+      // Reference to the Slidr controller navigators.
+      nav: { 'left': null, 'right': null, 'up': null, 'down': null }
     }
 
     var api = {
