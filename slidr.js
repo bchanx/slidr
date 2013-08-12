@@ -424,7 +424,8 @@
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
-        border['margin-' + dir] = horizontal ? '-25%' : '-50%';
+        border[dir] = '0';
+        border['margin-' + dir] = '0';
         browser.createStyle('.' + controls.cls.ctrlr + '.border' + ' .' + controls.cls.ctrl + '.' + n, border, true);
       }
     },
