@@ -1,11 +1,9 @@
-//
-// Copyright 2013. All Rights Reserved.
-// Author: Brian Chan
-// Contact: bchanx@gmail.com
-//
-
-/**
- * slidr - A Javascript library for adding slide effects. Currently under development.
+/*!
+ * slidr v0.1.0 - A Javascript library for adding slide effects.
+ * http://bchanx.com/slidr
+ * MIT licensed
+ *
+ * Copyright (c) 2013 Brian Chan (bchanx.com)
  */
 (function(root, factory) {
   // CommonJS
@@ -969,6 +967,9 @@
     return api;
   };
 
+  // Current version.
+  var VERSION = '0.1.0';
+
   // Active Slidr instances.
   var INSTANCES = {};
 
@@ -984,6 +985,14 @@
 
   // Global API.
   return {
+    /**
+     * Current version.
+     * @return {string} major.minor.patch.
+     */
+    'version': function() {
+      return VERSION;
+    },
+
     /**
      * Available transitions.
      * @return {Array} of transitions.
