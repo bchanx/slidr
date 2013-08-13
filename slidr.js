@@ -41,7 +41,7 @@
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
-  // Creates a document element with an optional class name.
+  // Creates a document element, and sets any properties passed in.
   function createEl(tag, props) {
     var el = document.createElement(tag);
     for (var p in props) el[p] = props[p];
@@ -882,7 +882,7 @@
 
       // Reference to the Slidr controller navigators.
       nav: { 'left': null, 'right': null, 'up': null, 'down': null }
-    }
+    };
 
     var api = {
 
