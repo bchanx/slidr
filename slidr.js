@@ -49,9 +49,10 @@
   // Add/rm class(es) on an element.
   function classname(el, type /* class1, class2... */) {
     for (var a = 2, cls; cls = arguments[a]; a++) {
-      if (type === 'add') el.classList.add(cls);
-      if (type === 'rm') el.classList.remove(cls);
+      if (type === 'add' && el.className.indexOf(cls) < 0) el.className += ' ' + cls;
+      if (type === 'rm' && el.className.indexOf(cls) >= 0) el.className = el.className.replace(cls, '');
     }
+    el.className = el.className.trim();
     return el;
   }
 
@@ -91,7 +92,7 @@
     // Slidr CSS style sheet.
     styleSheet: (function() {
       var el = createEl('style', { 'type' : 'text/css' });
-      document.head.appendChild(el);
+      document.getElementsByTagName('head')[0].appendChild(el);
       return el.sheet || el.styleSheet;
     }()),
 
