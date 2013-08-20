@@ -232,7 +232,7 @@
     // Get slide metadata.
     get: function(_) {
       var args = [];
-      for (var i = 1, a; a = arguments[i++]; args.push(a)) {};
+      for (var i = 1, a; (a = arguments[i++]) !== undefined; args.push(a)) {};
       return lookup(_.slides, args);
     },
 
