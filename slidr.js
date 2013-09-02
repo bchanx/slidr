@@ -78,6 +78,14 @@
     return el;
   }
 
+  // Bind element event(s) to a callback.
+  function bind(el, ev, callback) {
+    if (typeof(ev) === 'string') ev = [ev];
+    for (var i = 0, e; e = ev[i]; i++) {
+      (el.attachEvent) ? el.attachEvent('on' + e, callback) : el.addEventListener(e, callback);
+    }
+  }
+
   var browser = {
 
     // Vendor prefixes.
@@ -356,8 +364,7 @@
         }
         controls.css(_);
         _.slidr.appendChild(_.controls);
-        (_.controls.attachEvent) ? _.controls.attachEvent('onclick', controls.onclick(_)) :
-                                   _.controls.addEventListener('click', controls.onclick(_));
+        bind(_.controls, 'click', controls.onclick(_));
       }
     },
 
@@ -466,8 +473,7 @@
         });
         breadcrumbs.css();
         _.slidr.appendChild(_.breadcrumbs);
-        (_.breadcrumbs.attachEvent) ? _.breadcrumbs.attachEvent('onclick', breadcrumbs.onclick(_)) :
-                                      _.breadcrumbs.addEventListener('click', breadcrumbs.onclick(_));
+        bind(_.breadcrumbs, 'click', breadcrumbs.onclick(_));
       }
     },
 
