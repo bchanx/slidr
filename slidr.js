@@ -78,14 +78,6 @@
     return el;
   }
 
-  // Bind element event(s) to a callback.
-  function bind(el, ev, callback) {
-    if (typeof(ev) === 'string') ev = [ev];
-    for (var i = 0, e; e = ev[i]; i++) {
-      (el.attachEvent) ? el.attachEvent('on' + e, callback) : el.addEventListener(e, callback);
-    }
-  }
-
   var browser = {
 
     // Vendor prefixes.
@@ -190,51 +182,6 @@
         browser.createKeyframe(name, {
           '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart },
           '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd }
-        });
-      }
-    },
-
-    // Clone a mouse event.
-    mouseEvent: function(e) {
-      var evt = null;
-      if (document.createEvent) {
-        evt = document.createEvent('MouseEvents');
-        evt.initMouseEvent(e.type, e.bubbles, e.cancelable, e.detail, e.pageX || e.layerX, e.pageY || e.layerY,
-          e.clientX, e.clientY, e.ctrlKey, e.altKey, e.shiftKey, e.metaKey, e.button);
-      } else {
-        evt = document.createEventObject();
-        extend(evt, {
-          'eventType': e.eventType,
-          'bubbles': e.bubbles,
-          'cancelable': e.cancelable,
-          'clientX': e.clientX,
-          'clientY': e.clientY,
-          'ctrlKey': e.ctrlKey,
-          'altKey': e.altKey,
-          'shiftKey': e.shiftKey,
-          'metaKey': e.metaKey,
-          'button': e.button
-        });
-      }
-      return evt;
-    },
-
-    // Polyfill pointer-events.
-    pointerEvents: function(el) {
-      if (browser.supports('pointer-events')) {
-        bind(el, 'click', function(e) {
-          e = e || window.event;
-          if (!e.target) e.target = e.srcElement;
-          if (css(e.target, 'pointer-events') === 'none') {
-            var orig = css(e.target, 'display');
-            css(e.target, {'display': 'none'});
-            var under = document.elementFromPoint(e.clientX, e.clientY);
-            css(e.target, {'display': (orig) ? orig : ''});
-            var evt = browser.mouseEvent(e);
-            (under.dispatchEvent) ? under.dispatchEvent(evt) : under.fireEvent('on' + evt.eventType, evt);
-            return false;
-          }
-          return true;
         });
       }
     }
@@ -402,17 +349,15 @@
           'z-index': '0',
           'pointer-events': 'none'
         });
-        browser.pointerEvents(_.controls);
         for (var n in _.nav) {
           _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
-          var icon = classname(createEl('div'), 'add', controls.cls.icon);
-          browser.pointerEvents(icon);
-          _.nav[n].appendChild(icon);
+          _.nav[n].appendChild(classname(createEl('div'), 'add', controls.cls.icon));
           _.controls.appendChild(_.nav[n]);
         }
         controls.css(_);
         _.slidr.appendChild(_.controls);
-        bind(_.controls, 'click', controls.onclick(_));
+        (_.controls.attachEvent) ? _.controls.attachEvent('onclick', controls.onclick(_)) :
+                                   _.controls.addEventListener('click', controls.onclick(_));
       }
     },
 
@@ -490,7 +435,6 @@
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
         actions.slide(_, getattr(e.target, 'data-' + controls.cls.ctrl));
-        e.stopPropagation();
       }
     },
 
@@ -520,10 +464,10 @@
           'pointer-events': 'none',
           'box-sizing': 'border-box'
         });
-        browser.pointerEvents(_.breadcrumbs);
         breadcrumbs.css();
         _.slidr.appendChild(_.breadcrumbs);
-        bind(_.breadcrumbs, 'click', breadcrumbs.onclick(_));
+        (_.breadcrumbs.attachEvent) ? _.breadcrumbs.attachEvent('onclick', breadcrumbs.onclick(_)) :
+                                      _.breadcrumbs.addEventListener('click', breadcrumbs.onclick(_));
       }
     },
 
@@ -570,7 +514,6 @@
                       (transition.get(_, el, 'in', vdir)) ? vdir : null;
           slides.jump(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
         }
-        e.stopPropagation();
       }
     },
 
