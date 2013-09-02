@@ -344,8 +344,7 @@
     // Classname
     cls: {
       ctrlr: 'slidr-controller',
-      ctrl: 'slidr-control',
-      icon: 'slidr-control-icon'
+      ctrl: 'slidr-control'
     },
 
     // Create controls container.
@@ -359,7 +358,6 @@
         });
         for (var n in _.nav) {
           _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
-          _.nav[n].appendChild(classname(createEl('div'), 'add', controls.cls.icon));
           _.controls.appendChild(_.nav[n]);
         }
         controls.css(_);
@@ -397,13 +395,6 @@
         'opacity': '0.1',
         'cursor': 'auto'
       }, true);
-      browser.createStyle('.' + controls.cls.icon, {
-        'pointer-events': 'none',
-        'width': '0',
-        'height': '0',
-        'border': '8px transparent solid',
-        'position': 'absolute'
-      }, true);
 
       for (var n in _.nav) {
         var horizontal = (n === 'left' || n === 'right');
@@ -419,14 +410,20 @@
         ctrl['margin-' + dir] = '-8px';
         browser.createStyle('.' + controls.cls.ctrl + '.' + n, ctrl, true);
 
-        var icon = {};
-        icon['border-' + transition.opposite(pos) + '-width'] = '12px';
-        icon['border-' + pos + '-width'] = '10px';
-        icon['border-' + transition.opposite(pos) + '-color'] = 'white';
-        icon[pos] = '0';
-        icon[dir] = '50%';
-        icon['margin-' + dir] = '-8px';
-        browser.createStyle('.' + controls.cls.ctrl + '.' + n + ' .' + controls.cls.icon, icon, true);
+        var after = {
+          'width': '0',
+          'height': '0',
+          'content': '""',
+          'position': 'absolute',
+          'border': '8px solid transparent'
+        };
+        after['border-' + transition.opposite(pos) + '-width'] = '12px';
+        after['border-' + pos + '-width'] = '10px';
+        after['border-' + transition.opposite(pos) + '-color'] = 'white';
+        after[pos] = '0';
+        after[dir] = '50%';
+        after['margin-' + dir] = '-8px';
+        browser.createStyle('.' + controls.cls.ctrl + '.' + n + '::after', after, true);
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
