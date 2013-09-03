@@ -1,6 +1,6 @@
 /*!
  * slidr v0.1.0 - A Javascript library for adding slide effects.
- * http://bchanx.com/slidr
+ * bchanx.com/slidr
  * MIT licensed
  *
  * Copyright (c) 2013 Brian Chan (bchanx.com)
@@ -1022,4 +1022,3 @@
   };
 
 }));
-
