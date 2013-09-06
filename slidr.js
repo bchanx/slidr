@@ -599,14 +599,14 @@
       var s = slides.get(_, el);
       if (!s.initialized) {
         var display = css(s.el, 'display');
-        extend(init, {
+        init = extend({
           'display': (display === 'none') ? 'block' : display,
           'visibility': 'visible',
           'position': 'absolute',
           'opacity': '0',
           'z-index': '0',
           'pointer-events': 'none'
-        });
+        }, init);
         s.initialized = true;
       }
       css(s.el, init);
