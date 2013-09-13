@@ -28,10 +28,11 @@
     return (result === obj) ? null : result;
   }
 
-  // Merge all properties from {arguments} to {obj} if it's not yet defined.
-  function extend(obj /* arg1, arg2.. */) {
-    for (var i = 1, arg; arg = arguments[i]; i++) for (var a in arg) if (obj[a] === undefined) obj[a] = arg[a];
-    return obj;
+  // Merge all properties from {arguments} and return the new {object}.
+  function extend(/* arg1, arg2.. */) {
+    var newobj = {};
+    for (var i = 0, arg; arg = arguments[i]; i++) for (var a in arg) newobj[a] = arg[a];
+    return newobj;
   }
 
   // Check whether node a contains node b.
@@ -767,7 +768,7 @@
           'opacity': '1',
           'display': (display !== 'inline-block') ? 'table' : display,
           'position': (position === 'static') ? 'relative' : position,
-          'overflow': (_.settings['clipping']) ? 'hidden': overflow
+          'overflow': (_.settings['overflow']) ? 'hidden': overflow
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
@@ -921,8 +922,8 @@
        * Adds a set of slides.
        * @param {string} direction `horizontal || h` or `vertical || v`.
        * @param {Array} ids A list of `data-slidr` id's to add to Slidr. Slides must be direct children of the Slidr.
-       * @param {string?} opt_transition The transition to apply between the slides, or uses the default.
-       * @param {boolean?} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
+       * @param {string=} opt_transition The transition to apply between the slides, or uses the default.
+       * @param {boolean=} opt_overwrite Whether to overwrite existing slide mappings/transitions if conflicts occur.
        * @return {this}
        */
       'add': function(direction, ids, opt_transition, opt_overwrite) {
@@ -960,7 +961,7 @@
 
       /**
        * Toggle controls.
-       * @param {string?} opt_scheme Change the control scheme layout to either `corner` or `border`.
+       * @param {string=} opt_scheme Change the control scheme layout to either `corner` or `border`.
        */
       'controls': function(opt_scheme) {
         actions.controls(_, opt_scheme);
@@ -982,7 +983,7 @@
     'transition': 'none',         // The default transition to apply to slides for add(). See slidr.transitions().
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
     'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
-    'clipping': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
+    'overflow': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
     'controls': ''                // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
   };
@@ -1008,7 +1009,7 @@
     /**
      * Creates a Slidr.
      * @param {string} id The element id to turn into a Slidr.
-     * @param {Object} opt_settings Settings to apply.
+     * @param {Object=} opt_settings Settings to apply.
      */
     'create': function(id, opt_settings) {
       var el = document.getElementById(id);
@@ -1016,7 +1017,7 @@
         console.warn('[Slidr] Could not find element with id: ' + id + '.');
         return;
       }
-      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, extend(opt_settings || {}, DEFAULTS));
+      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, extend(DEFAULTS, opt_settings || {}));
       return INSTANCES[id];
     }
   };
