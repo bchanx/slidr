@@ -174,23 +174,27 @@
     // Add CSS keyframes.
     add: {
       'fade': function(name, oStart, oEnd) {
-        browser.createKeyframe(name, { '0': { 'opacity': oStart }, '100': { 'opacity': oEnd } });
+        browser.createKeyframe(name, {
+          '0': { 'opacity': oStart, 'visibility': 'visible' }, '100': { 'opacity': oEnd, 'visibility': 'hidden' }
+        });
       },
       'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
         browser.createKeyframe(name, {
           '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)',
-            'opacity': (type === 'in' ? '0' : oStart) },
+            'opacity': (type === 'in' ? '0' : oStart), 'visibility': 'visible' },
           '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': (type === 'in' ? '0' : oStart) },
           '2': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
           '98': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
           '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': type === 'out' ? '0' : oEnd },
-          '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)' }
+          '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)', 'visibility': 'hidden' }
         });
       },
       'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
         browser.createKeyframe(name, {
-          '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart },
-          '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd }
+          '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart,
+            'visibility': 'visible' },
+          '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd,
+            'visibility': 'hidden' }
         });
       }
     }
@@ -355,7 +359,9 @@
           createEl('div', { 'id': _.id + '-' + controls.cls.ctrlr }), 'add', controls.cls.ctrlr), {
           'opacity': '0',
           'z-index': '0',
-          'pointer-events': 'none'
+          'visibility': 'hidden',
+          'pointer-events': 'none',
+          'transform': 'translateZ(9998px)'
         });
         for (var n in _.nav) {
           _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
@@ -467,7 +473,8 @@
           'z-index': '0',
           'padding': '10px',
           'pointer-events': 'none',
-          'box-sizing': 'border-box'
+          'box-sizing': 'border-box',
+          'transform': 'translateZ(9999px)'
         });
         breadcrumbs.css();
         _.slidr.appendChild(_.breadcrumbs);
@@ -602,7 +609,7 @@
         var display = css(s.el, 'display');
         init = extend({
           'display': (display === 'none') ? 'block' : display,
-          'visibility': 'visible',
+          'visibility': 'hidden',
           'position': 'absolute',
           'opacity': '0',
           'z-index': '0',
@@ -681,6 +688,7 @@
       var anim = {
         'opacity': (type === 'in') ? '1': '0',
         'z-index': opt_z || (type === 'in' ? '1': '0'),
+        'visibility': (type === 'in') ? 'visible': 'hidden',
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
       var el = opt_target || slides.get(_, el).el;
