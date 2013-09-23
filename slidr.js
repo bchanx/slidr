@@ -774,9 +774,9 @@
         css(_.slidr, {
           'visibility': 'visible',
           'opacity': '1',
-          'display': (display !== 'inline-block') ? 'table' : display,
+          'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
-          'overflow': (_.settings['overflow']) ? 'hidden': overflow
+          'overflow': (!_.settings['overflow']) ? 'hidden': overflow
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
@@ -991,7 +991,7 @@
     'transition': 'none',         // The default transition to apply to slides for add(). See slidr.transitions().
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
     'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
-    'overflow': false,            // Whether to clip transitions at the slidr container borders. `true` or `false`.
+    'overflow': true,             // Whether to overflow transitions at slidr borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
     'controls': ''                // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
   };
