@@ -47,13 +47,23 @@
     return el;
   }
 
+  // indexOf() shim for IE < 9. List elements only.
+  function indexOf(list, val) {
+    if (Array.prototype.indexOf) return list.indexOf(val);
+    for (var i = 0, len = list.length; i < len; i++) if (val === list[i]) return i;
+    return -1;
+  }
+
   // Add/rm class(es) on an element.
   function classname(el, type /* class1, class2... */) {
-    for (var a = 2, cls; cls = arguments[a]; a++) {
-      if (type === 'add' && el.className.indexOf(cls) < 0) el.className += ' ' + cls;
-      if (type === 'rm' && el.className.indexOf(cls) >= 0) el.className = el.className.replace(cls, '');
+    var clsnames = el.className.trim();
+    clsnames = (clsnames) ? clsnames.split(/\s+/) : [];
+    for (var a = 2, cls, idx; cls = arguments[a]; a++) {
+      idx = indexOf(clsnames, cls);
+      if (type === 'add' && idx < 0) clsnames.push(cls);
+      if (type === 'rm' && idx >= 0) clsnames.splice(idx, 1);
     }
-    el.className = el.className.trim();
+    el.className = clsnames.join(' ');
     return el;
   }
 
@@ -72,8 +82,11 @@
   function css(el, prop) {
     if (typeof prop === 'string') {
       var style = window.getComputedStyle(el)[browser.fix(prop)];
-      return (style) ? (style.slice(-2) === 'px' && style.indexOf('px') == style.length - 2) ? 
-        parseInt(style.slice(0, -2)) : style : 'none';
+      if (style) {
+        var val = style.slice(0, -2);
+        return (style.slice(-2) === 'px' && !isNaN(parseInt(val)) && val.search('px') <= 0) ? parseInt(val) : style;
+      }
+      return 'none';
     }
     for (var p in prop) if (browser.fix(p)) el.style[browser.fix(p)] = prop[p];
     return el;
@@ -129,7 +142,7 @@
     createKeyframe: function(name, rules) {
       var animation = browser.fix('animation', true);
       if (animation) {
-        var prefix = (animation.lastIndexOf('-') > 0) ? animation.slice(0, animation.lastIndexOf('-') + 1) : '';
+        var prefix = (animation.split('-').length === 3) ? '-' + animation.split('-')[1] + '-' : '';
         var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
         for (var r in rules) {
           rule.push(r + '% {');
@@ -208,7 +221,7 @@
     // Validates a given transition.
     validate: function(_, trans) {
       trans = trans || _.settings['transition'];
-      return (transition.available.indexOf(trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
+      return (indexOf(transition.available, trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
     },
 
     // Get the direction transition for an element.
@@ -286,7 +299,7 @@
       for (var i = 0, slide, name; slide = _.slidr.childNodes[i]; i++) {
         name = getattr(slide, 'data-slidr');
         if (name) {
-          if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
+          if (opt_asList && indexOf(valid, name) < 0) valid.push(name);
           else if (!(name in valid)) valid[name] = slide;
         }
       }
