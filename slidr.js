@@ -479,6 +479,7 @@
           'z-index': '0',
           'padding': '10px',
           'pointer-events': 'none',
+          'visibility': 'hidden',
           'box-sizing': 'border-box',
           'transform': 'translateZ(9999px)'
         });
