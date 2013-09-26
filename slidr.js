@@ -47,19 +47,12 @@
     return el;
   }
 
-  // indexOf() shim for IE < 9. List elements only.
-  function indexOf(list, val) {
-    if (Array.prototype.indexOf) return list.indexOf(val);
-    for (var i = 0, len = list.length; i < len; i++) if (val === list[i]) return i;
-    return -1;
-  }
-
   // Add/rm class(es) on an element.
   function classname(el, type /* class1, class2... */) {
     var clsnames = el.className.trim();
     clsnames = (clsnames) ? clsnames.split(/\s+/) : [];
     for (var a = 2, cls, idx; cls = arguments[a]; a++) {
-      idx = indexOf(clsnames, cls);
+      idx = clsnames.indexOf(cls);
       if (type === 'add' && idx < 0) clsnames.push(cls);
       if (type === 'rm' && idx >= 0) clsnames.splice(idx, 1);
     }
@@ -221,7 +214,7 @@
     // Validates a given transition.
     validate: function(_, trans) {
       trans = trans || _.settings['transition'];
-      return (indexOf(transition.available, trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
+      return (transition.available.indexOf(trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
     },
 
     // Get the direction transition for an element.
@@ -299,7 +292,7 @@
       for (var i = 0, slide, name; slide = _.slidr.childNodes[i]; i++) {
         name = getattr(slide, 'data-slidr');
         if (name) {
-          if (opt_asList && indexOf(valid, name) < 0) valid.push(name);
+          if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
           else if (!(name in valid)) valid[name] = slide;
         }
       }
