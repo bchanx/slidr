@@ -123,12 +123,17 @@
       browser.styleSheet.insertRule(rule, browser.styleSheet.cssRules.length);
     },
 
-    // Creates a style rule.
-    createStyle: function(name, props, opt_safe) {
+    // Creates a CSS rule.
+    createRule: function(name, props) {
       var rule = [name, '{'];
       for (var p in props) rule.push(browser.fix(p, true) + ':' + props[p] + ';');
       rule.push('}');
-      browser.addCSSRule(name, rule.join(' '), opt_safe);
+      return rule.join(' ');
+    },
+
+    // Creates a CSS style.
+    createStyle: function(name, props, opt_safe) {
+      browser.addCSSRule(name, browser.createRule(name, props), opt_safe);
     },
 
     // Creates a keyframe animation rule.
@@ -137,11 +142,7 @@
       if (animation) {
         var prefix = (animation.split('-').length === 3) ? '-' + animation.split('-')[1] + '-' : '';
         var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
-        for (var r in rules) {
-          rule.push(r + '% {');
-          for (var p in rules[r]) rule.push(browser.fix(p, true) + ': ' + rules[r][p] + ';');
-          rule.push('}');
-        }
+        for (var r in rules) rule.push(browser.createRule(r + '%', rules[r]));
         rule.push('}');
         browser.addCSSRule(name, rule.join(' '));
       }
@@ -381,6 +382,9 @@
 
     // Controls CSS rules.
     css: function(_) {
+      browser.createStyle('aside[id*="-' + controls.cls.ctrlr + '"].disabled', {
+        'transform': 'translateZ(0px) !important'
+      }, true);
       browser.createStyle('.' + controls.cls.ctrlr, {
         'position': 'absolute',
         'bottom': '0',
@@ -491,6 +495,9 @@
 
     // Breadcrumbs CSS rules.
     css: function(_) {
+      browser.createStyle('aside[id*="-' + breadcrumbs.cls + '"].disabled', {
+        'transform': 'translateZ(0px) !important'
+      }, true);
       browser.createStyle('.' + breadcrumbs.cls, {
         'font-size': '0',
         'line-height': '0'
@@ -710,6 +717,15 @@
         anim['animation'] = fx.timing[trans](name);
       }
       css(el, anim);
+      // Toggle translateZ on breadcrumbs/controls so it doesn't interfere with page flow.
+      var asides = el.getElementsByTagName('aside');
+      if (asides.length) {
+        for (var i = 0, aside, toggle; aside = asides[i]; i++) {
+          toggle = (type === 'out') ? 'add' :
+                   (type === 'in' && css(aside.parentNode, 'visibility') === 'visible') ? 'rm': null;
+          if (toggle) classname(aside, toggle, 'disabled');
+        }
+      }
     }
   };
 
