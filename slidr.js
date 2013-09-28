@@ -722,9 +722,11 @@
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
       var borderbox = css(clone, 'box-sizing') === 'border-box';
+      var cloneWidth = (borderbox ? size.widthPad(_) + size.widthBorder(_) : 0) + 42;
+      var cloneHeight = (borderbox ? size.heightPad(_) + size.heightBorder(_) : 0) + 42;
       var dynamic = {
-        width: css(clone, 'width') - 42 === (borderbox ? size.widthPad(_) : 0),
-        height: css(clone, 'height') - 42 === (borderbox ? size.heightPad(_) : 0),
+        width: css(clone, 'width') === cloneWidth || css(clone, 'min-width') !== 0,
+        height: css(clone, 'height') === cloneHeight || css(clone, 'min-height') !== 0,
         borderbox: borderbox
       };
       _.slidr.parentNode.removeChild(clone);
@@ -737,6 +739,16 @@
     },
     heightPad: function(_) {
       return css(_.slidr, 'padding-top') + css(_.slidr, 'padding-bottom');
+    },
+
+    // Grabs the Slidr width/height border.
+    widthBorder: function(_) {
+      return parseInt(css(_.slidr, 'border-left').split('px ')[0]) +
+             parseInt(css(_.slidr, 'border-right').split('px ')[0]);
+    },
+    heightBorder: function(_) {
+      return parseInt(css(_.slidr, 'border-top').split('px ')[0]) +
+             parseInt(css(_.slidr, 'border-bottom').split('px ')[0]);
     },
 
     // Sets the width/height of our Slidr container.
