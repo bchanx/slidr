@@ -362,7 +362,7 @@
     create: function(_) {
       if (_.slidr && !_.controls) {
         _.controls = css(classname(
-          createEl('div', { 'id': _.id + '-' + controls.cls.ctrlr }), 'add', controls.cls.ctrlr), {
+          createEl('aside', { 'id': _.id + '-' + controls.cls.ctrlr }), 'add', controls.cls.ctrlr), {
           'opacity': '0',
           'z-index': '0',
           'visibility': 'hidden',
@@ -432,11 +432,11 @@
         };
         after['border-' + transition.opposite(pos) + '-width'] = '12px';
         after['border-' + pos + '-width'] = '10px';
-        after['border-' + transition.opposite(pos) + '-color'] = 'white';
+        after['border-' + transition.opposite(pos) + '-color'] = _.settings['theme'];
         after[pos] = '0';
         after[dir] = '50%';
         after['margin-' + dir] = '-8px';
-        browser.createStyle('.' + controls.cls.ctrl + '.' + n + '::after', after, true);
+        browser.createStyle('#' + _.id + ' .' + controls.cls.ctrl + '.' + n + '::after', after, true);
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
@@ -471,7 +471,7 @@
     // Initialize breadcrumbs container.
     init: function(_) {
       if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = css(createEl('div', { 'id': _.id + '-' + breadcrumbs.cls }), {
+        _.breadcrumbs = css(createEl('aside', { 'id': _.id + '-' + breadcrumbs.cls }), {
           'position': 'absolute',
           'bottom': '0',
           'right': '0',
@@ -483,14 +483,14 @@
           'box-sizing': 'border-box',
           'transform': 'translateZ(9999px)'
         });
-        breadcrumbs.css();
+        breadcrumbs.css(_);
         _.slidr.appendChild(_.breadcrumbs);
         bind(_.breadcrumbs, 'click', breadcrumbs.onclick(_));
       }
     },
 
     // Breadcrumbs CSS rules.
-    css: function() {
+    css: function(_) {
       browser.createStyle('.' + breadcrumbs.cls, {
         'font-size': '0',
         'line-height': '0'
@@ -501,17 +501,17 @@
         'display': 'inline-block',
         'margin': '3px'
       }, true);
-      browser.createStyle('.' + breadcrumbs.cls + ' li.normal', {
+      browser.createStyle('#' + _.id + ' .' + breadcrumbs.cls + ' li.normal', {
         'border-radius': '100%',
-        'border': '1px white solid',
+        'border': '1px ' + _.settings['theme'] +' solid',
         'cursor': 'pointer',
         'pointer-events': 'auto'
       }, true);
-      browser.createStyle('.' + breadcrumbs.cls + ' li.active', {
+      browser.createStyle('#' + _.id + ' .' + breadcrumbs.cls + ' li.active', {
         'width': '12px',
         'height': '12px',
         'margin': '2px',
-        'background-color': 'white'
+        'background-color': _.settings['theme']
       }, true);
     },
 
@@ -704,7 +704,7 @@
         var keyframe = lookup(fx.animation, [trans, type, dir]);
         if (keyframe && dir) {
           var size = css(el, (dir === 'up' || dir === 'down') ? 'height' : 'width');
-          var opacity = _.settings['fading'] ? '0' : '1';
+          var opacity = _.settings['fade'] ? '0' : '1';
           keyframe(name, size, opacity);
         }
         anim['animation'] = fx.timing[trans](name);
@@ -1007,12 +1007,13 @@
 
   // Slidr default settings.
   var DEFAULTS = {
-    'transition': 'none',         // The default transition to apply to slides for add(). See slidr.transitions().
+    'transition': 'linear',       // The default transition to apply to slides for add(). See slidr.transitions().
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
-    'fading': true,               // Whether slide transitions should fade in/out. `true` or `false`.
-    'overflow': true,             // Whether to overflow transitions at slidr borders. `true` or `false`.
+    'fade': false,                // Whether slide transitions should fade in/out. `true` or `false`.
+    'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
-    'controls': ''                // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
+    'controls': '',               // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
+    'theme': '#fff'               // Sets color theme for breadcrumbs/controls. Hex code or rgba value.
   };
 
   // Global API.
