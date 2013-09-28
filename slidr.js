@@ -832,10 +832,10 @@
     },
 
     // Automatically transition between slides.
-    auto: function(_, dir, msec) {
+    auto: function(_, msec, direction) {
       if (_.started) {
         actions.stop(_);
-        _.auto = setInterval(function() { slides.slide(_, dir); }, msec);
+        _.auto = setInterval(function() { slides.slide(_, direction); }, msec);
       }
     },
 
@@ -960,13 +960,13 @@
 
       /**
        * Automatically advance to the next slide after a certain timeout. Calls start() if not already called.
-       * @param {string} direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
-       * @param {int} msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
-       * @param {string} opt_start The `data-slidr` id to start at (only works if auto was called to start the Slidr).
+       * @param {int=} opt_msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
+       * @param {string=} opt_direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
+       * @param {string=} opt_start The `data-slidr` id to start at (only works if auto was called to start the Slidr).
        */
-      'auto': function(direction, msec, opt_start) {
+      'auto': function(opt_msec, opt_direction, opt_start) {
         actions.start(_, opt_start);
-        actions.auto(_, direction || 'right', msec || 5000);
+        actions.auto(_, opt_msec || 5000, opt_direction || 'right');
         return this;
       },
 
