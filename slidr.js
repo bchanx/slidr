@@ -74,7 +74,7 @@
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
-      var style = window.getComputedStyle(el)[browser.fix(prop)];
+      var style = document.defaultView.getComputedStyle(el)[browser.fix(prop)];
       if (style) {
         var val = style.slice(0, -2);
         return (style.slice(-2) === 'px' && !isNaN(parseInt(val)) && val.search('px') <= 0) ? parseInt(val) : style;
@@ -759,12 +759,10 @@
 
     // Grabs the Slidr width/height border.
     widthBorder: function(_) {
-      return parseInt(css(_.slidr, 'border-left').split('px ')[0]) +
-             parseInt(css(_.slidr, 'border-right').split('px ')[0]);
+      return css(_.slidr, 'border-left-width') + css(_.slidr, 'border-right-width');
     },
     heightBorder: function(_) {
-      return parseInt(css(_.slidr, 'border-top').split('px ')[0]) +
-             parseInt(css(_.slidr, 'border-bottom').split('px ')[0]);
+      return css(_.slidr, 'border-top-width') + css(_.slidr, 'border-bottom-width');
     },
 
     // Sets the width/height of our Slidr container.
