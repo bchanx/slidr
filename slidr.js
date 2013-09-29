@@ -258,14 +258,14 @@
     // Possible directions.
     directions: ['left', 'up', 'right', 'down'],
 
-    // Get the opoosite direction.
-    opposite: function(dir) {
-      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + 2) % 4] : null;
-    },
-
     // Check if next is a direction.
     isdir: function(next) {
       return slides.directions.indexOf(next) >= 0;
+    },
+
+    // Get the opoosite direction.
+    opposite: function(dir) {
+      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + 2) % 4] : null;
     },
 
     // Get slide metadata.
@@ -657,8 +657,8 @@
     supported: {
       'none': true,
       'fade': browser.supports('animation', 'opacity'),
-      'linear': browser.supports('transform', 'opacity'),
-      'cube': browser.supports('animation', 'backface-visibility', 'transform-style', 'transform', 'opacity')
+      'linear': browser.supports('animation', 'opacity', 'transform'),
+      'cube': browser.supports('animation', 'backface-visibility', 'opacity', 'transform', 'transform-style')
     },
 
     // Timing functions for our animations.
@@ -822,14 +822,12 @@
       if (!_.started && _.slidr) {
         var display = css(_.slidr, 'display');
         var position = css(_.slidr, 'position');
-        var overflow = css(_.slidr, 'overflow');
-        var opacity = css(_.slidr, 'opacity');
         css(_.slidr, {
           'visibility': 'visible',
-          'opacity': opacity,
+          'opacity': css(_.slidr, 'opacity'),
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
-          'overflow': (!_.settings['overflow']) ? 'hidden': overflow
+          'overflow': (!_.settings['overflow']) ? 'hidden': css(_.slidr, 'overflow')
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
