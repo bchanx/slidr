@@ -874,8 +874,9 @@
     controls: function(_, opt_scheme) {
       if (_.controls && _.displayed) {
         if (opt_scheme === 'border') classname(_.controls, 'add', 'border');
-        if (opt_scheme === 'corner') classname(_.controls, 'rm', 'border');
-        var type = (opt_scheme || css(_.controls, 'opacity') === '0') ? 'in' : 'out';
+        else if (opt_scheme === 'corner') classname(_.controls, 'rm', 'border');
+        else if (opt_scheme !== 'none') opt_scheme = null;
+        var type = (!opt_scheme || opt_scheme === 'none') ? 'out' : 'in';
         fx.animate(_, null, 'fade', type, null, _.controls, '2', 'none');
       }
     }
@@ -1026,7 +1027,7 @@
     'fade': false,                // Whether slide transitions should fade in/out. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
-    'controls': '',               // Show or hide control arrows on start(). Available schemes: `corner` or `border`.
+    'controls': 'border',         // Show or hide control arrows on start(). `border`, `corner` or `none`.
     'theme': '#fff'               // Sets color theme for breadcrumbs/controls. Hex code or rgba value.
   };
 
