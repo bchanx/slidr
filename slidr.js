@@ -353,25 +353,29 @@
 
   var controls = {
 
-    // Classname
-    cls: {
-      ctrlr: 'slidr-controller',
-      ctrl: 'slidr-control'
-    },
+    // Classnames
+    cls: (function(clsname) {
+      return {
+        main: clsname,
+        maincss: 'aside[id*="-' + clsname + '"]',
+        nav: 'slidr-' + clsname,
+        navcss: 'aside[id*="-' + clsname + '"] .slidr-' + clsname,
+        data: 'data-slidr-' + clsname
+      }
+    })('control'),
 
     // Create controls container.
     create: function(_) {
       if (_.slidr && !_.controls) {
         _.controls = css(classname(
-          createEl('aside', { 'id': _.id + '-' + controls.cls.ctrlr }), 'add', controls.cls.ctrlr), {
+          createEl('aside', { 'id': _.id + '-' + controls.cls.main }), 'add', 'disabled'), {
           'opacity': '0',
           'z-index': '0',
           'visibility': 'hidden',
-          'pointer-events': 'none',
-          'transform': 'translateZ(9998px)'
+          'pointer-events': 'none'
         });
         for (var n in _.nav) {
-          _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.ctrl, n), 'data-' + controls.cls.ctrl, n);
+          _.nav[n] = setattr(classname(createEl('div'), 'add', controls.cls.nav, n), controls.cls.data, n);
           _.controls.appendChild(_.nav[n]);
         }
         controls.css(_);
@@ -382,33 +386,34 @@
 
     // Controls CSS rules.
     css: function(_) {
-      browser.createStyle('aside[id*="-' + controls.cls.ctrlr + '"].disabled', {
-        'transform': 'translateZ(0px) !important'
-      }, true);
-      browser.createStyle('.' + controls.cls.ctrlr, {
+      browser.createStyle(controls.cls.maincss, {
         'position': 'absolute',
         'bottom': '0',
         'right': '0',
         'padding': '10px',
         'box-sizing': 'border-box',
         'width': '75px',
-        'height': '75px'
+        'height': '75px',
+        'transform': 'translateZ(9998px)'
       }, true);
-      browser.createStyle('.' + controls.cls.ctrlr + '.breadcrumbs', {
+      browser.createStyle(controls.cls.maincss + '.disabled', {
+        'transform': 'translateZ(0px) !important'
+      }, true);
+      browser.createStyle(controls.cls.maincss + '.breadcrumbs', {
         'left': '0',
         'right': 'auto'
       }, true);
-      browser.createStyle('.' + controls.cls.ctrlr + '.border', {
+      browser.createStyle(controls.cls.maincss + '.border', {
         'width': '100%',
         'height': '100%'
       }, true);
-      browser.createStyle('.' + controls.cls.ctrl, {
+      browser.createStyle(controls.cls.navcss, {
         'position': 'absolute',
         'pointer-events': 'auto',
         'cursor': 'pointer',
         'transition': 'opacity 0.2s linear'
       }, true);
-      browser.createStyle('.' + controls.cls.ctrl + '.disabled', {
+      browser.createStyle(controls.cls.navcss + '.disabled', {
         'opacity': '0.1',
         'cursor': 'auto'
       }, true);
@@ -425,7 +430,7 @@
         ctrl[pos] = '0';
         ctrl[dir] = '50%';
         ctrl['margin-' + dir] = '-8px';
-        browser.createStyle('.' + controls.cls.ctrl + '.' + n, ctrl, true);
+        browser.createStyle(controls.cls.navcss + '.' + n, ctrl, true);
 
         var after = {
           'width': '0',
@@ -440,13 +445,14 @@
         after[pos] = '0';
         after[dir] = '50%';
         after['margin-' + dir] = '-8px';
-        browser.createStyle('#' + _.id + ' .' + controls.cls.ctrl + '.' + n + '::after', after, true);
+        browser.createStyle('aside[id="' + _.id + '-' + controls.cls.main + '"] .' +
+          controls.cls.nav + '.' + n + '::after', after, true);
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
         border[dir] = '0';
         border['margin-' + dir] = '0';
-        browser.createStyle('.' + controls.cls.ctrlr + '.border' + ' .' + controls.cls.ctrl + '.' + n, border, true);
+        browser.createStyle(controls.cls.maincss + '.border  .' + controls.cls.nav + '.' + n, border, true);
       }
     },
 
@@ -455,7 +461,7 @@
       return function handler(e) {
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
-        actions.slide(_, getattr(e.target, 'data-' + controls.cls.ctrl));
+        actions.slide(_, getattr(e.target, controls.cls.data));
       }
     },
 
@@ -475,7 +481,7 @@
     // Initialize breadcrumbs container.
     init: function(_) {
       if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = css(createEl('aside', { 'id': _.id + '-' + breadcrumbs.cls }), {
+        _.breadcrumbs = css(classname(createEl('aside', { 'id': _.id + '-' + breadcrumbs.cls }), 'add', 'disabled'), {
           'position': 'absolute',
           'bottom': '0',
           'right': '0',
