@@ -204,6 +204,18 @@
             'visibility': 'hidden' }
         });
       }
+    },
+
+    // CSS classnames for breadcrumbs/controls.
+    classnames: function(cls) {
+      return {
+        main: cls,
+        maincss: 'aside[id*="-' + cls + '"]',
+        nav: 'slidr-' + cls,
+        navcss: 'aside[id*="-' + cls + '"] .slidr-' + cls,
+        data: 'data-slidr-' + cls,
+        id: function(_, css) { return css ? 'aside[id="' + _.id + '-' + cls + '"]' : _.id + '-' + cls; }
+      }
     }
   };
 
@@ -354,21 +366,12 @@
   var controls = {
 
     // Classnames
-    cls: (function(clsname) {
-      return {
-        main: clsname,
-        maincss: 'aside[id*="-' + clsname + '"]',
-        nav: 'slidr-' + clsname,
-        navcss: 'aside[id*="-' + clsname + '"] .slidr-' + clsname,
-        data: 'data-slidr-' + clsname
-      }
-    })('control'),
+    cls: browser.classnames('control'),
 
     // Create controls container.
     create: function(_) {
       if (_.slidr && !_.controls) {
-        _.controls = css(classname(
-          createEl('aside', { 'id': _.id + '-' + controls.cls.main }), 'add', 'disabled'), {
+        _.controls = css(classname(createEl('aside', { 'id': controls.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
           'z-index': '0',
           'visibility': 'hidden',
@@ -414,7 +417,7 @@
         'transition': 'opacity 0.2s linear'
       }, true);
       browser.createStyle(controls.cls.navcss + '.disabled', {
-        'opacity': '0.1',
+        'opacity': '0.05',
         'cursor': 'auto'
       }, true);
 
@@ -445,14 +448,13 @@
         after[pos] = '0';
         after[dir] = '50%';
         after['margin-' + dir] = '-8px';
-        browser.createStyle('aside[id="' + _.id + '-' + controls.cls.main + '"] .' +
-          controls.cls.nav + '.' + n + '::after', after, true);
+        browser.createStyle(controls.cls.id(_, true) + ' .' + controls.cls.nav + '.' + n + '::after', after, true);
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
         border[dir] = '0';
         border['margin-' + dir] = '0';
-        browser.createStyle(controls.cls.maincss + '.border  .' + controls.cls.nav + '.' + n, border, true);
+        browser.createStyle(controls.cls.maincss + '.border .' + controls.cls.nav + '.' + n, border, true);
       }
     },
 
@@ -475,23 +477,17 @@
 
   var breadcrumbs = {
   
-    // Classname
-    cls: 'slidr-breadcrumbs',
+    // Classnames
+    cls: browser.classnames('breadcrumbs'),
 
     // Initialize breadcrumbs container.
     init: function(_) {
       if (_.slidr && !_.breadcrumbs) {
-        _.breadcrumbs = css(classname(createEl('aside', { 'id': _.id + '-' + breadcrumbs.cls }), 'add', 'disabled'), {
-          'position': 'absolute',
-          'bottom': '0',
-          'right': '0',
+        _.breadcrumbs = css(classname(createEl('aside', { 'id': breadcrumbs.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
           'z-index': '0',
-          'padding': '10px',
           'pointer-events': 'none',
-          'visibility': 'hidden',
-          'box-sizing': 'border-box',
-          'transform': 'translateZ(9999px)'
+          'visibility': 'hidden'
         });
         breadcrumbs.css(_);
         _.slidr.appendChild(_.breadcrumbs);
@@ -501,26 +497,34 @@
 
     // Breadcrumbs CSS rules.
     css: function(_) {
-      browser.createStyle('aside[id*="-' + breadcrumbs.cls + '"].disabled', {
+      browser.createStyle(breadcrumbs.cls.maincss, {
+        'position': 'absolute',
+        'bottom': '0',
+        'right': '0',
+        'padding': '10px',
+        'box-sizing': 'border-box',
+        'transform': 'translateZ(9999px)'
+      }, true);
+      browser.createStyle(breadcrumbs.cls.maincss + '.disabled', {
         'transform': 'translateZ(0px) !important'
       }, true);
-      browser.createStyle('.' + breadcrumbs.cls, {
+      browser.createStyle(breadcrumbs.cls.navcss, {
         'font-size': '0',
         'line-height': '0'
       }, true);
-      browser.createStyle('.' + breadcrumbs.cls + ' li', {
+      browser.createStyle(breadcrumbs.cls.navcss + ' li', {
         'width': '10px',
         'height': '10px',
         'display': 'inline-block',
         'margin': '3px'
       }, true);
-      browser.createStyle('#' + _.id + ' .' + breadcrumbs.cls + ' li.normal', {
+      browser.createStyle(breadcrumbs.cls.id(_, true) + ' .' + breadcrumbs.cls.nav + ' li.normal', {
         'border-radius': '100%',
         'border': '1px ' + _.settings['theme'] +' solid',
         'cursor': 'pointer',
         'pointer-events': 'auto'
       }, true);
-      browser.createStyle('#' + _.id + ' .' + breadcrumbs.cls + ' li.active', {
+      browser.createStyle(breadcrumbs.cls.id(_, true) + ' .' + breadcrumbs.cls.nav + ' li.active', {
         'width': '12px',
         'height': '12px',
         'margin': '2px',
@@ -533,7 +537,7 @@
       return function handler(e) {
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
-        var el = getattr(e.target, 'data-' + breadcrumbs.cls);
+        var el = getattr(e.target, breadcrumbs.cls.data);
         if (el && el !== _.current && slides.get(_, el)) {
           var cur = _.crumbs[_.current];
           var next = _.crumbs[el];
@@ -598,7 +602,7 @@
         var rows = bounds.y.max - bounds.y.min + 1;
         var columns = bounds.x.max - bounds.x.min + 1;
         while (_.breadcrumbs.firstChild) _.breadcrumbs.removeChild(_.breadcrumbs.firstChild);
-        var ul = classname(createEl('ul'), 'add', breadcrumbs.cls);
+        var ul = classname(createEl('ul'), 'add', breadcrumbs.cls.nav);
         var li = createEl('li');
         for (var r = rows - 1, ulclone; r >= 0; r--) {
           ulclone = ul.cloneNode(false);
@@ -607,7 +611,7 @@
             element = crumbsMap[c + ',' + r];
             if (element) {
               classname(liclone, 'add', 'normal', element === _.current ? 'active' : null);
-              setattr(liclone, 'data-' + breadcrumbs.cls, element);
+              setattr(liclone, breadcrumbs.cls.data, element);
               crumbs[element].el = liclone;
             }
             ulclone.appendChild(liclone);
@@ -810,9 +814,10 @@
         var display = css(_.slidr, 'display');
         var position = css(_.slidr, 'position');
         var overflow = css(_.slidr, 'overflow');
+        var opacity = css(_.slidr, 'opacity');
         css(_.slidr, {
           'visibility': 'visible',
-          'opacity': '1',
+          'opacity': opacity,
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
           'overflow': (!_.settings['overflow']) ? 'hidden': overflow
