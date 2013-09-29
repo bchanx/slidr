@@ -256,7 +256,7 @@
   var slides = {
 
     // Possible directions.
-    directions: ['left', 'up', 'right', 'down'],
+    directions: ['left', 'up', 'top', 'right', 'down', 'bottom'],
 
     // Check if next is a direction.
     isdir: function(next) {
@@ -265,7 +265,8 @@
 
     // Get the opoosite direction.
     opposite: function(dir) {
-      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + 2) % 4] : null;
+      var length = slides.directions.length;
+      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + length/2) % length] : null;
     },
 
     // Get slide metadata.
