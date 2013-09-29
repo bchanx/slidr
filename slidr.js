@@ -944,7 +944,7 @@
       crumbs: {},
 
       // Reference to the Slidr controller navigators.
-      nav: { 'left': null, 'right': null, 'up': null, 'down': null }
+      nav: { 'up': null, 'down': null, 'left': null, 'right': null }
     };
 
     var api = {
