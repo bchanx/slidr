@@ -232,7 +232,7 @@
 
     // Get the direction transition for an element.
     get: function(_, el, type, dir) {
-      return lookup(_.trans, [el, (type === 'in') ? transition.opposite(dir) : dir]);
+      return lookup(_.trans, [el, (type === 'in') ? slides.opposite(dir) : dir]);
     },
 
     // Sets the direction transition for an element.
@@ -250,16 +250,23 @@
         breadcrumbs.update(_, el, type);
         fx.animate(_, el, trans, type, dir);
       }
-    },
-
-    // Get the opoosite direction.
-    opposite: function(dir) {
-      return (dir === 'up') ? 'down' : (dir === 'down') ? 'up' : (dir === 'left') ? 'right' :
-        (dir === 'right') ? 'left' : (dir === 'top') ? 'bottom' : (dir === 'bottom') ? 'top' : null;
     }
   };
 
   var slides = {
+
+    // Possible directions.
+    directions: ['left', 'up', 'right', 'down'],
+
+    // Get the opoosite direction.
+    opposite: function(dir) {
+      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + 2) % 4] : null;
+    },
+
+    // Check if next is a direction.
+    isdir: function(next) {
+      return slides.directions.indexOf(next) >= 0;
+    },
 
     // Get slide metadata.
     get: function(_) {
@@ -282,13 +289,28 @@
       }
     },
 
-    // Transition to the next slide in direction `dir`.
-    slide: function(_, dir) {
-      return slides.jump(_, slides.get(_, _.current, dir), dir, dir);
+    // Transition to the next slide.
+    slide: function(_, next) {
+      return slides.isdir(next) ? slides.go(_, slides.get(_, _.current, next), next, next) : slides.jump(_, next);
     },
 
     // Jump to a target slide.
-    jump: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
+    jump: function(_, el) {
+      if (el && el !== _.current && slides.get(_, el)) {
+        var cur = _.crumbs[_.current];
+        var next = _.crumbs[el];
+        var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
+        var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
+        var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
+                     (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
+        var indir = (transition.get(_, el, 'in', hdir)) ? hdir :
+                    (transition.get(_, el, 'in', vdir)) ? vdir : null;
+        slides.go(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
+      }
+    },
+
+    // Go to a target slide.
+    go: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
       if (_.current && el) {
         transition.apply(_, el, 'in', indir, opt_intrans);
         transition.apply(_, _.current, 'out', outdir, opt_outtrans);
@@ -442,9 +464,9 @@
           'position': 'absolute',
           'border': '8px solid transparent'
         };
-        after['border-' + transition.opposite(pos) + '-width'] = '12px';
+        after['border-' + slides.opposite(pos) + '-width'] = '12px';
         after['border-' + pos + '-width'] = '10px';
-        after['border-' + transition.opposite(pos) + '-color'] = _.settings['theme'];
+        after['border-' + slides.opposite(pos) + '-color'] = _.settings['theme'];
         after[pos] = '0';
         after[dir] = '50%';
         after['margin-' + dir] = '-8px';
@@ -469,9 +491,7 @@
 
     // Update controls.
     update: function(_) {
-      for (var n in _.nav) {
-        classname(_.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
-      }
+      for (var n in _.nav) classname(_.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
     }
   };
 
@@ -537,18 +557,7 @@
       return function handler(e) {
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
-        var el = getattr(e.target, breadcrumbs.cls.data);
-        if (el && el !== _.current && slides.get(_, el)) {
-          var cur = _.crumbs[_.current];
-          var next = _.crumbs[el];
-          var hdir = (cur.x < next.x) ? 'right' : (cur.x > next.x) ? 'left' : null;
-          var vdir = (cur.y < next.y) ? 'up': (cur.y > next.y) ? 'down': null;
-          var outdir = (transition.get(_, _.current, 'out', hdir)) ? hdir :
-                       (transition.get(_, _.current, 'out', vdir)) ? vdir : null;
-          var indir = (transition.get(_, el, 'in', hdir)) ? hdir :
-                      (transition.get(_, el, 'in', vdir)) ? vdir : null;
-          slides.jump(_, el, outdir, indir, (outdir) ? null : 'fade', (indir) ? null : 'fade');
-        }
+        slides.jump(_, getattr(e.target, breadcrumbs.cls.data));
       }
     },
 
@@ -832,13 +841,13 @@
     },
 
     // Can we slide?
-    canSlide: function(_, dir) {
-      return _.started && !!slides.get(_, _.current, dir);
+    canSlide: function(_, next) {
+      return _.started && (slides.isdir(next) ? !!slides.get(_, _.current, next) : !!slides.get(_, next));
     },
 
     // Slide.
-    slide: function(_, dir) {
-      if (_.started) slides.slide(_, dir);
+    slide: function(_, next) {
+      if (_.started && next) slides.slide(_, next);
     },
 
     // Adds a set of slides.
@@ -858,7 +867,7 @@
 
     // Automatically transition between slides.
     auto: function(_, msec, direction) {
-      if (_.started) {
+      if (_.started && slides.isdir(direction)) {
         actions.stop(_);
         _.auto = setInterval(function() { slides.slide(_, direction); }, msec);
       }
@@ -954,20 +963,20 @@
 
       /**
        * Check whether we can slide.
-       * @param {string} dir 'up', 'down', 'left' or 'right'.
+       * @param {string} next a direction ('up', 'down', 'left', 'right') or a target slide.
        * @return {boolean}
        */
-      'canSlide': function(dir) {
-        return actions.canSlide(_, dir);
+      'canSlide': function(next) {
+        return actions.canSlide(_, next);
       },
 
       /**
        * Slide.
-       * @param {string} dir slide 'up', 'down', 'left', or 'right'.
+       * @param {string} next slide in a direction ('up', 'down', 'left', 'right') or to a target slide.
        * @return {this}
        */
-      'slide': function(dir) {
-        actions.slide(_, dir);
+      'slide': function(next) {
+        actions.slide(_, next);
         return this;
       },
 
