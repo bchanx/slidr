@@ -285,8 +285,8 @@
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
         _.displayed = true;
-        if (_.settings['breadcrumbs']) actions.breadcrumbs(_)
-        if (_.settings['controls']) actions.controls(_, _.settings['controls'])
+        if (!!_.settings['breadcrumbs']) actions.breadcrumbs(_);
+        if (controls.valid(_.settings['controls'])) actions.controls(_, _.settings['controls']);
       }
     },
 
@@ -390,6 +390,14 @@
 
     // Classnames
     cls: browser.classnames('control'),
+
+    // Available control types.
+    types: ['border', 'corner', 'none'],
+
+    // Whether it's a valid control type.
+    valid: function(ctrl) {
+      return controls.types.indexOf(ctrl) >= 0;
+    },
 
     // Create controls container.
     create: function(_) {
@@ -558,7 +566,7 @@
       return function handler(e) {
         e = e || window.event;
         if (!e.target) e.target = e.srcElement;
-        slides.jump(_, getattr(e.target, breadcrumbs.cls.data));
+        actions.slide(_, getattr(e.target, breadcrumbs.cls.data));
       }
     },
 
@@ -731,7 +739,7 @@
         var keyframe = lookup(fx.animation, [trans, type, dir]);
         if (keyframe && dir) {
           var size = css(el, (dir === 'up' || dir === 'down') ? 'height' : 'width');
-          var opacity = _.settings['fade'] ? '0' : '1';
+          var opacity = (!!_.settings['fade']) ? '0' : '1';
           keyframe(name, size, opacity);
         }
         anim['animation'] = fx.timing[trans](name);
@@ -828,7 +836,7 @@
           'opacity': css(_.slidr, 'opacity'),
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
-          'overflow': (!_.settings['overflow']) ? 'hidden': css(_.slidr, 'overflow')
+          'overflow': (!!_.settings['overflow']) ? css(_.slidr, 'overflow') : 'hidden'
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
@@ -894,8 +902,9 @@
       if (_.controls && _.displayed) {
         if (opt_scheme === 'border') classname(_.controls, 'add', 'border');
         else if (opt_scheme === 'corner') classname(_.controls, 'rm', 'border');
-        else if (opt_scheme !== 'none') opt_scheme = null;
-        var type = (!opt_scheme || opt_scheme === 'none') ? 'out' : 'in';
+        else opt_scheme = null;
+        var type = (!opt_scheme) ? 'out' : 'in';
+        if (type === 'out' && css(_.controls, 'visibility' === 'hidden')) return;
         fx.animate(_, null, 'fade', type, null, _.controls, '2', 'none');
       }
     }
@@ -1043,7 +1052,7 @@
   var DEFAULTS = {
     'transition': 'linear',       // The default transition to apply to slides for add(). See slidr.transitions().
     'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
-    'fade': false,                // Whether slide transitions should fade in/out. `true` or `false`.
+    'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
     'controls': 'border',         // Show or hide control arrows on start(). `border`, `corner` or `none`.
