@@ -1050,13 +1050,13 @@
 
   // Slidr default settings.
   var DEFAULTS = {
-    'transition': 'linear',       // The default transition to apply to slides for add(). See slidr.transitions().
-    'direction': 'horizontal',    // The default direction for new slides in add(). `horizontal || h`, `vertical || v`.
-    'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
-    'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
     'controls': 'border',         // Show or hide control arrows on start(). `border`, `corner` or `none`.
-    'theme': '#fff'               // Sets color theme for breadcrumbs/controls. Hex code or rgba value.
+    'direction': 'horizontal',    // The default direction for new slides. `horizontal` or `h`, `vertical` or `v`.
+    'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
+    'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
+    'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
+    'transition': 'linear'        // The default transition to apply. `cube`, `linear`, `fade`, or `none`.
   };
 
   // Global API.
