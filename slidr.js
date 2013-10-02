@@ -782,11 +782,13 @@
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
       var borderbox = css(clone, 'box-sizing') === 'border-box';
-      var cloneWidth = (borderbox ? size.widthPad(_) + size.widthBorder(_) : 0) + 42;
-      var cloneHeight = (borderbox ? size.heightPad(_) + size.heightBorder(_) : 0) + 42;
+      var originalWidth = (borderbox ? size.widthPad(_) + size.widthBorder(_) : 0) + 42;
+      var originalHeight = (borderbox ? size.heightPad(_) + size.heightBorder(_) : 0) + 42;
+      var cloneWidth = css(clone, 'width');
+      var cloneHeight = css(clone, 'height');
       var dynamic = {
-        width: css(clone, 'width') === cloneWidth || css(clone, 'min-width') !== 0,
-        height: css(clone, 'height') === cloneHeight || css(clone, 'min-height') !== 0,
+        width: cloneWidth === 'auto' || cloneWidth === originalWidth || css(clone, 'min-width') !== 0,
+        height: cloneHeight === 'auto' || cloneHeight === originalHeight || css(clone, 'min-height') !== 0,
         borderbox: borderbox
       };
       _.slidr.parentNode.removeChild(clone);
@@ -977,7 +979,8 @@
     var api = {
 
       /**
-       * Start the Slidr! Automatically finds slides to create if nothing was added prior to calling start().
+       * Start the Slidr!
+       * Automatically finds slides to create if nothing was added prior to calling start().
        * @param {string} opt_start `data-slidr` id to start on.
        * @return {this}
        */
@@ -988,7 +991,7 @@
 
       /**
        * Check whether we can slide.
-       * @param {string} next a direction ('up', 'down', 'left', 'right') or a target slide.
+       * @param {string} next a direction ('up', 'down', 'left', 'right') or a `data-slidr` id.
        * @return {boolean}
        */
       'canSlide': function(next) {
@@ -996,8 +999,8 @@
       },
 
       /**
-       * Slide.
-       * @param {string} next slide in a direction ('up', 'down', 'left', 'right') or to a target slide.
+       * Slide!
+       * @param {string} next a direction ('up', 'down', 'left', 'right') or a `data-slidr` id.
        * @return {this}
        */
       'slide': function(next) {
@@ -1022,7 +1025,7 @@
        * Automatically advance to the next slide after a certain timeout. Calls start() if not already called.
        * @param {int=} opt_msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
        * @param {string=} opt_direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
-       * @param {string=} opt_start The `data-slidr` id to start at (only works if auto was called to start the Slidr).
+       * @param {string=} opt_start The `data-slidr` id to start at (only works if auto is called to start the Slidr).
        */
       'auto': function(opt_msec, opt_direction, opt_start) {
         actions.start(_, opt_start);
@@ -1048,7 +1051,7 @@
 
       /**
        * Toggle controls.
-       * @param {string=} opt_scheme Change the control scheme layout to either `corner` or `border`.
+       * @param {string=} opt_scheme Toggle on/off if not present, else change scheme. `border`, `corner` or `none`.
        */
       'controls': function(opt_scheme) {
         actions.controls(_, opt_scheme);
@@ -1095,7 +1098,8 @@
     },
 
     /**
-     * Creates a Slidr.
+     * Creates and returns a Slidr.
+     * Calling create on the same element twice returns the already instantiated Slidr.
      * @param {string} id The element id to turn into a Slidr.
      * @param {Object=} opt_settings Settings to apply.
      */
