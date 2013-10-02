@@ -40,6 +40,11 @@
     return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
   }
 
+  // Returns the tag name, normalized.
+  function tagName(el) {
+    return (el.tagName) ? el.tagName.toLowerCase() : null;
+  }
+
   // Creates a document element, and sets any properties passed in.
   function createEl(tag, props) {
     var el = document.createElement(tag);
@@ -733,25 +738,36 @@
         'visibility': (type === 'in') ? 'visible': 'hidden',
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
-      var el = opt_target || slides.get(_, el).el;
+      var target = opt_target || slides.get(_, el).el;
       if (fx.supported[trans] && fx.timing[trans]) {
         var name = fx.name(_, trans, type, dir);
         var keyframe = lookup(fx.animation, [trans, type, dir]);
         if (keyframe && dir) {
-          var size = css(el, (dir === 'up' || dir === 'down') ? 'height' : 'width');
+          var size = css(target, (dir === 'up' || dir === 'down') ? 'height' : 'width');
           var opacity = (!!_.settings['fade']) ? '0' : '1';
           keyframe(name, size, opacity);
         }
         anim['animation'] = fx.timing[trans](name);
       }
-      css(el, anim);
-      // Toggle translateZ on breadcrumbs/controls so it doesn't interfere with page flow.
+      css(target, anim);
+      if (slides.get(_, el)) fx.fixTranslateZ(_, target, type);
+    },
+
+    // Toggle translateZ on breadcrumbs/controls so it doesn't interfere with page flow.
+    fixTranslateZ: function(_, el, opt_type) {
       var asides = el.getElementsByTagName('aside');
       if (asides.length) {
-        for (var i = 0, aside, toggle; aside = asides[i]; i++) {
-          toggle = (type === 'out') ? 'add' :
-                   (type === 'in' && css(aside.parentNode, 'visibility') === 'visible') ? 'rm': null;
-          if (toggle) classname(aside, toggle, 'disabled');
+        for (var i = 0, aside, p, toggle, visibility; aside = asides[i]; i++) {
+          if (!!aside.getAttribute('id')) {
+            // Get the first parent data-slidr node, or use the current Slidr element.
+            p = aside.parentNode;
+            while (!getattr(p, 'data-slidr') && tagName(p) !== 'body') p = p.parentNode;
+            if (tagName(p) === 'body') p = _.slidr;
+            visibility = css(p, 'visibility');
+            toggle = (opt_type === 'out' || !opt_type && visibility === 'hidden') ? 'add' :
+                     (visibility === 'visible') ? 'rm' : null;
+            if (toggle) classname(aside, toggle, 'disabled');
+          }
         }
       }
     }
@@ -842,6 +858,7 @@
         if (slides.get(_, opt_start)) _.start = opt_start;
         slides.display(_);
         size.autoResize(_);
+        fx.fixTranslateZ(_, _.slidr);
         _.started = true;
         controls.update(_);
       }
