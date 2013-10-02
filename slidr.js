@@ -1026,6 +1026,7 @@
        * @param {int=} opt_msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
        * @param {string=} opt_direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
        * @param {string=} opt_start The `data-slidr` id to start at (only works if auto is called to start the Slidr).
+       * @return {this}
        */
       'auto': function(opt_msec, opt_direction, opt_start) {
         actions.start(_, opt_start);
@@ -1035,6 +1036,7 @@
 
       /**
        * Stop auto transition if it's turned on.
+       * @return {this}
        */
       'stop': function() {
         actions.stop(_);
@@ -1043,6 +1045,7 @@
 
       /**
        * Toggle breadcrumbs.
+       * @return {this}
        */
       'breadcrumbs': function() {
         actions.breadcrumbs(_);
@@ -1052,6 +1055,7 @@
       /**
        * Toggle controls.
        * @param {string=} opt_scheme Toggle on/off if not present, else change scheme. `border`, `corner` or `none`.
+       * @return {this}
        */
       'controls': function(opt_scheme) {
         actions.controls(_, opt_scheme);
