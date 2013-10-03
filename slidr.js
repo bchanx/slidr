@@ -739,7 +739,8 @@
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
       var target = opt_target || slides.get(_, el).el;
-      if (fx.supported[trans] && fx.timing[trans]) {
+      var timing = _.settings['timing'][trans];
+      if (fx.supported[trans] && timing) {
         var name = fx.name(_, trans, type, dir);
         var keyframe = lookup(fx.animation, [trans, type, dir]);
         if (keyframe && dir) {
@@ -747,7 +748,7 @@
           var opacity = (!!_.settings['fade']) ? '0' : '1';
           keyframe(name, size, opacity);
         }
-        anim['animation'] = fx.timing[trans](name);
+        anim['animation'] = (trans === 'none') ? 'none' : [name, timing].join(' ');
       }
       css(target, anim);
       if (slides.get(_, el)) fx.fixTranslateZ(_, target, type);
@@ -1045,6 +1046,21 @@
       },
 
       /**
+       * Set custom animation timings.
+       * @param {string|Object} transition Either a transition name (i.e. 'cube'), or a {'transition': 'timing'} object.
+       * @param {string=} opt_timing The new animation timing (i.e "0.5s ease-in"). Not required if transition is an object.
+       * @return {this}
+       */
+      'timing': function(transition, opt_timing) {
+        if (!!transition && transition.constructor === Object) {
+          _.settings['timing'] = extend(_.settings['timing'], transition);
+        } else if (typeof(transition) === 'string' && typeof(opt_timing) === 'string') {
+          _.settings['timing'][transition] = opt_timing;
+        }
+        return this;
+      },
+
+      /**
        * Toggle breadcrumbs.
        * @return {this}
        */
@@ -1081,7 +1097,16 @@
     'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
+    'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
     'transition': 'linear'        // The default transition to apply. `cube`, `linear`, `fade`, or `none`.
+  };
+
+  // Slidr default animation timings.
+  var TIMING = {
+    'none': 'none',
+    'fade': '0.4s ease-out',
+    'linear': '0.6s ease-out',
+    'cube': '1s cubic-bezier(0.15, 0.9, 0.25, 1)'
   };
 
   // Global API.
@@ -1111,10 +1136,12 @@
     'create': function(id, opt_settings) {
       var el = document.getElementById(id);
       if (!el) {
-        console.warn('[Slidr] Could not find element with id: ' + id + '.');
+        console.warn('[Slidr] Could not find element with id [' + id + '].');
         return;
       }
-      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, extend(DEFAULTS, opt_settings || {}));
+      var settings = extend(DEFAULTS, opt_settings || {});
+      settings['timing'] = extend(TIMING, settings['timing']);
+      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, settings);
       return INSTANCES[id];
     }
   };
