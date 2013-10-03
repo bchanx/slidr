@@ -290,8 +290,8 @@
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
         _.displayed = true;
+        actions.controls(_, _.settings['controls']);
         if (!!_.settings['breadcrumbs']) actions.breadcrumbs(_);
-        if (controls.valid(_.settings['controls'])) actions.controls(_, _.settings['controls']);
       }
     },
 
@@ -884,7 +884,7 @@
         var prev = (direction === 'horizontal' || direction === 'h') ? 'left' : 'up';
         var next = (direction === 'horizontal' || direction === 'h') ? 'right' : 'down';
         if (!slides.validate(_, ids, trans, valid, prev, next) && !opt_overwrite) {
-          console.warn('[Slidr] Error adding [' + direction + '] slides.');
+          console.warn('[Slidr] Error adding [' + direction + '] slides for [' + _.id + '].');
         } else {
           slides.add(_, ids, trans, valid, prev, next);
         }
@@ -919,11 +919,12 @@
     // Toggle controls.
     controls: function(_, opt_scheme) {
       if (_.controls && _.displayed) {
+        if (!controls.valid(opt_scheme)) opt_scheme = null;
+        var hidden = css(_.controls, 'visibility') === 'hidden';
+        var type = (opt_scheme && opt_scheme !== 'none') ? 'in' : 'out';
+        if (type === 'out' && hidden) return;
         if (opt_scheme === 'border') classname(_.controls, 'add', 'border');
         else if (opt_scheme === 'corner') classname(_.controls, 'rm', 'border');
-        else opt_scheme = null;
-        var type = (!opt_scheme) ? 'out' : 'in';
-        if (type === 'out' && css(_.controls, 'visibility' === 'hidden')) return;
         fx.animate(_, null, 'fade', type, null, _.controls, '2', 'none');
       }
     }
