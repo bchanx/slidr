@@ -292,11 +292,6 @@ aside[id="{slidr-id}-control"] .slidr-control:after {
   border-color: transparent !important;
 }
 
-// Hide all arrows within a single controller.
-aside[id="{slidr-id}-control"] .slidr-control:after {
-  border-color: transparent !important;
-}
-
 // Hide all Slidr arrows.
 aside[id*="-control"] .slidr-control:after {
   border-color: transparent !important;   
