@@ -325,7 +325,7 @@ aside[id="{slidr-id}-breadcrumbs"] {
 
 aside[id="{slidr-id}-breadcrumbs"] .slidr-breadcrumbs li {
   width: 15px !important;
-  height: 15px important;
+  height: 15px !important;
   margin: 3px !important;
 }
 
