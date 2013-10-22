@@ -94,10 +94,9 @@
   function bind(el, ev, callback) {
     if (typeof(ev) === 'string') ev = [ev];
     var touch = 'ontouchstart' in window || 'onmsgesturechange' in window;
-    var attach = el.attachEvent;
     for (var i = 0, e; e = ev[i]; i++) {
-      e = (e === 'click' && touch) ? 'touchend' : (!!attach) ? 'on' + e : e;
-      (!!attach) ? attach(e, callback) : el.addEventListener(e, callback);
+      e = (e === 'click' && touch) ? 'touchend' : (el.attachEvent) ? 'on' + e : e;
+      (el.attachEvent) ? el.attachEvent(e, callback) : el.addEventListener(e, callback);
     }
   }
 
