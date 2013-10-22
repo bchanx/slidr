@@ -678,14 +678,6 @@
       'cube': browser.supports('animation', 'backface-visibility', 'opacity', 'transform', 'transform-style')
     },
 
-    // Timing functions for our animations.
-    timing: {
-      'none': function(name) { return 'none'; },
-      'fade': function(name) { return name + ' 0.4s ease-out 0s'; },
-      'linear': function(name) { return name + ' 0.6s ease-out 0s'; },
-      'cube': function(name) { return name + ' 1s cubic-bezier(0.15, 0.9, 0.25, 1) 0s'; }
-    },
-
     // Defines our slide animations.
     animation: {
       'fade': {
