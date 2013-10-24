@@ -65,6 +65,11 @@
     return el;
   }
 
+  // Normalize a string. Strip spaces, single, and double quotes then return in alphabetical order.
+  function normalize(str) {
+    return str.replace(/[\s'"]/gi, '').split('').sort().join('');
+  }
+
   // Set name:value attribute for an element.
   function setattr(el, name, value) {
     if (el && el.setAttribute) el.setAttribute(name, value);
@@ -93,9 +98,8 @@
   // Bind element event(s) to a callback.
   function bind(el, ev, callback) {
     if (typeof(ev) === 'string') ev = [ev];
-    var touch = 'ontouchstart' in window || 'onmsgesturechange' in window;
     for (var i = 0, e; e = ev[i]; i++) {
-      e = (e === 'click' && touch) ? 'touchend' : (el.attachEvent) ? 'on' + e : e;
+      e = (e === 'click' && 'ontouchstart' in window) ? 'touchend' : (el.attachEvent) ? 'on' + e : e;
       (el.attachEvent) ? el.attachEvent(e, callback) : el.addEventListener(e, callback);
     }
   }
@@ -119,10 +123,12 @@
     }()),
 
     // Adds a CSS rule to our Slidr stylesheet.
-    addCSSRule: function(name, rule, opt_safe) {
-      for (var r = 0, cssRule; cssRule = browser.styleSheet.cssRules[r]; r++) {
-        if (cssRule.name == name || cssRule.selectorText === name) {
-          if (!!opt_safe || cssRule.cssText.replace(/\s/gi, '') === rule.replace(/\s/gi, '')) return;
+    addCSSRule: function(name, rule, optSafe) {
+      name = normalize(name);
+      for (var r = 0, cssRule, cssName; cssRule = browser.styleSheet.cssRules[r]; r++) {
+        cssName = normalize((cssRule.name || cssRule.selectorText || cssRule.cssText.split(' {')[0] || ''));
+        if (cssName === name) {
+          if (!!optSafe || (normalize(cssRule.cssText) === normalize(rule))) return;
           browser.styleSheet.deleteRule(r);
           break;
         }
@@ -139,8 +145,8 @@
     },
 
     // Creates a CSS style.
-    createStyle: function(name, props, opt_safe) {
-      browser.addCSSRule(name, browser.createRule(name, props), opt_safe);
+    createStyle: function(name, props, optSafe) {
+      browser.addCSSRule(name, browser.createRule(name, props), optSafe);
     },
 
     // Creates a keyframe animation rule.
