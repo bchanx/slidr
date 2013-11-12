@@ -98,11 +98,11 @@
     if (typeof prop === 'string') {
 //      console.log("-->> prop: " + prop + ", browser.fix(prop): " + browser.fix(prop));
       var view = (document.defaultView) ? document.defaultView.getComputedStyle(el) : el.currentStyle;
-  //    console.log('-->> ' + view);
+//      console.log('-->> ' + view);
       var style = view[browser.fix(prop)];
-    //  console.log('-->> style: ' + style);
-      //console.log('-->> id name: ' + el.getAttribute('id'));
-      //if (prop === 'opacity') console.log('-->> yolo: ' + view.filter);
+//      console.log('-->> style: ' + style);
+//      console.log('-->> id name: ' + el.getAttribute('id'));
+//      if (prop === 'opacity') console.log('-->> yolo: ' + view.filter);
       if (style) {
         var val = style.slice(0, -2);
         return (style.slice(-2) === 'px' && !isNaN(parseInt(val)) && val.search('px') <= 0) ? parseInt(val) : style;
@@ -148,37 +148,29 @@
 
     insertRule: function(rule) {
       if (browser.styleSheet.insertRule) {
-	console.log("-->> wtf");
         browser.insertRule = function(r) {
-		console.log("-->> INSERTING: " + r);
-		console.log("-->> LENGTH: " + browser.cssRules().length);
-		browser.styleSheet.insertRule(rule, browser.cssRules().length); };
-        browser.insertRule(rule);
+          browser.styleSheet.insertRule(r, browser.cssRules().length);
+        }
       } else {
-	console.log("-->> derp derp");
         browser.insertRule = function(r) {
-          var split = r.match(/([^{]+)\s/gi);
-	  if (split.length > 1) browser.styleSheet.addRule(trim(split[0]), trim(split[1]));
-	};
-	browser.insertRule(rule);
+          var split = r.match(/([^[]+)\s/gi);
+          if (split.length > 1) browser.styleSheet.addRule(trim(split[0], trim(split[1])));
+        }
       }
+      browser.insertRule(rule);
     },
 
     // Adds a CSS rule to our Slidr stylesheet.
     addCSSRule: function(name, rule, optSafe) {
-      console.log("-->> NAME: " + name);
       name = normalize(name);
-      console.log("-->> browser.cssRules: " + browser.cssRules());
       for (var r = 0, cssRule, cssName; cssRule = browser.cssRules()[r]; r++) {
         cssName = normalize((cssRule.name || cssRule.selectorText || cssRule.cssText.split(' {')[0] || ''));
-	//console.log("-->> CSSNAME: " + cssName);
         if (cssName === name) {
           if (!!optSafe || (normalize(cssRule.cssText) === normalize(rule))) return;
           browser.styleSheet.deleteRule(r);
           break;
         }
       }
-      console.log("-->> ADD RULE: " + rule);
       browser.insertRule(rule);
     },
 
@@ -784,7 +776,7 @@
     animate: function(_, el, trans, type, dir, opt_target, opt_z, opt_pointer) {
       var anim = {
         'opacity': (type === 'in') ? '1': '0',
-        'filter': 'alpha(opacity=' + (type === 'in' ? '1': '0') + ')',
+        'filter': 'alpha(opacity=' + (type === 'in' ? '100': '0') + ')',
         'z-index': opt_z || (type === 'in' ? '1': '0'),
         'visibility': (type === 'in') ? 'visible': 'hidden',
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
