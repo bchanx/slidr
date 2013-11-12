@@ -37,12 +37,24 @@
 
   // Check whether node a contains node b.
   function contains(a, b) {
-    return (a.contains) ? a.contains(b) : a.compareDocumentPosition(b) & 16;
+    return (a.contains) ? a.contains(b) : (a.compareDocumentPosition) ? a.compareDocumentPosition(b) & 16 : 0;
   }
 
   // Returns the tag name, normalized.
   function tagName(el) {
     return (el.tagName) ? el.tagName.toLowerCase() : null;
+  }
+
+  // Simple indexOf polyfill for IE8.
+  function indexOf(list, val) {
+    if (Array.prototype.indexOf) return list.indexOf(val);
+    for (var i = 0, len = list.length; i < len; i++) if (list[i] === val) return i;
+    return -1;
+  }
+  
+  // Simple trim polyfill for IE8.
+  function trim(str) {
+    return ("".trim) ? str.trim() : str.replace(/^\s+|\s+$/g, '');
   }
 
   // Creates a document element, and sets any properties passed in.
@@ -54,10 +66,10 @@
 
   // Add/rm class(es) on an element.
   function classname(el, type /* class1, class2... */) {
-    var clsnames = el.className.trim();
+    var clsnames = trim(el.className);
     clsnames = (clsnames) ? clsnames.split(/\s+/) : [];
     for (var a = 2, cls, idx; cls = arguments[a]; a++) {
-      idx = clsnames.indexOf(cls);
+      idx = indexOf(clsnames, cls);
       if (type === 'add' && idx < 0) clsnames.push(cls);
       if (type === 'rm' && idx >= 0) clsnames.splice(idx, 1);
     }
@@ -84,7 +96,13 @@
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
-      var style = document.defaultView.getComputedStyle(el)[browser.fix(prop)];
+//      console.log("-->> prop: " + prop + ", browser.fix(prop): " + browser.fix(prop));
+      var view = (document.defaultView) ? document.defaultView.getComputedStyle(el) : el.currentStyle;
+  //    console.log('-->> ' + view);
+      var style = view[browser.fix(prop)];
+    //  console.log('-->> style: ' + style);
+      //console.log('-->> id name: ' + el.getAttribute('id'));
+      //if (prop === 'opacity') console.log('-->> yolo: ' + view.filter);
       if (style) {
         var val = style.slice(0, -2);
         return (style.slice(-2) === 'px' && !isNaN(parseInt(val)) && val.search('px') <= 0) ? parseInt(val) : style;
@@ -122,18 +140,46 @@
       return el.sheet || el.styleSheet;
     }()),
 
+    cssRules: function() {
+      browser.cssRules = function() {
+        return browser.styleSheet.cssRules || browser.styleSheet.rules; };
+      return browser.cssRules();
+    },
+
+    insertRule: function(rule) {
+      if (browser.styleSheet.insertRule) {
+	console.log("-->> wtf");
+        browser.insertRule = function(r) {
+		console.log("-->> INSERTING: " + r);
+		console.log("-->> LENGTH: " + browser.cssRules().length);
+		browser.styleSheet.insertRule(rule, browser.cssRules().length); };
+        browser.insertRule(rule);
+      } else {
+	console.log("-->> derp derp");
+        browser.insertRule = function(r) {
+          var split = r.match(/([^{]+)\s/gi);
+	  if (split.length > 1) browser.styleSheet.addRule(trim(split[0]), trim(split[1]));
+	};
+	browser.insertRule(rule);
+      }
+    },
+
     // Adds a CSS rule to our Slidr stylesheet.
     addCSSRule: function(name, rule, optSafe) {
+      console.log("-->> NAME: " + name);
       name = normalize(name);
-      for (var r = 0, cssRule, cssName; cssRule = browser.styleSheet.cssRules[r]; r++) {
+      console.log("-->> browser.cssRules: " + browser.cssRules());
+      for (var r = 0, cssRule, cssName; cssRule = browser.cssRules()[r]; r++) {
         cssName = normalize((cssRule.name || cssRule.selectorText || cssRule.cssText.split(' {')[0] || ''));
+	//console.log("-->> CSSNAME: " + cssName);
         if (cssName === name) {
           if (!!optSafe || (normalize(cssRule.cssText) === normalize(rule))) return;
           browser.styleSheet.deleteRule(r);
           break;
         }
       }
-      browser.styleSheet.insertRule(rule, browser.styleSheet.cssRules.length);
+      console.log("-->> ADD RULE: " + rule);
+      browser.insertRule(rule);
     },
 
     // Creates a CSS rule.
@@ -240,7 +286,7 @@
     // Validates a given transition.
     validate: function(_, trans) {
       trans = trans || _.settings['transition'];
-      return (transition.available.indexOf(trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
+      return (indexOf(transition.available, trans) < 0 || !fx.supported[trans]) ? 'none' : trans;
     },
 
     // Get the direction transition for an element.
@@ -273,13 +319,13 @@
 
     // Check if next is a direction.
     isdir: function(next) {
-      return slides.directions.indexOf(next) >= 0;
+      return indexOf(slides.directions, next) >= 0;
     },
 
     // Get the opoosite direction.
     opposite: function(dir) {
       var length = slides.directions.length;
-      return slides.isdir(dir) ? slides.directions[(slides.directions.indexOf(dir) + length/2) % length] : null;
+      return slides.isdir(dir) ? slides.directions[(indexOf(slides.directions, dir) + length/2) % length] : null;
     },
 
     // Get slide metadata.
@@ -341,7 +387,7 @@
       for (var i = 0, slide, name; slide = _.slidr.childNodes[i]; i++) {
         name = getattr(slide, 'data-slidr');
         if (name) {
-          if (opt_asList && valid.indexOf(name) < 0) valid.push(name);
+          if (opt_asList && indexOf(valid, name) < 0) valid.push(name);
           else if (!(name in valid)) valid[name] = slide;
         }
       }
@@ -409,7 +455,7 @@
 
     // Whether it's a valid control type.
     valid: function(ctrl) {
-      return controls.types.indexOf(ctrl) >= 0;
+      return indexOf(controls.types, ctrl) >= 0;
     },
 
     // Create controls container.
@@ -417,6 +463,7 @@
       if (_.slidr && !_.controls) {
         _.controls = css(classname(createEl('aside', { 'id': controls.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
+          'filter': 'alpha(opacity=0)',
           'z-index': '0',
           'visibility': 'hidden',
           'pointer-events': 'none'
@@ -462,6 +509,7 @@
       }, true);
       browser.createStyle(controls.cls.navcss + '.disabled', {
         'opacity': '0.05',
+        'filter': 'alpha(opacity=5)',
         'cursor': 'auto'
       }, true);
 
@@ -492,7 +540,7 @@
         after[pos] = '0';
         after[dir] = '50%';
         after['margin-' + dir] = '-8px';
-        browser.createStyle(controls.cls.id(_, true) + ' .' + controls.cls.nav + '.' + n + '::after', after, true);
+        browser.createStyle(controls.cls.id(_, true) + ' .' + controls.cls.nav + '.' + n + ':after', after, true);
 
         var border = {};
         border[horizontal ? 'height': 'width'] = '100%';
@@ -527,6 +575,7 @@
       if (_.slidr && !_.breadcrumbs) {
         _.breadcrumbs = css(classname(createEl('aside', { 'id': breadcrumbs.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
+          'filter': 'alpha(opacity=0)',
           'z-index': '0',
           'pointer-events': 'none',
           'visibility': 'hidden'
@@ -667,6 +716,7 @@
           'visibility': 'hidden',
           'position': 'absolute',
           'opacity': '0',
+          'filter': 'alpha(opacity=0)',
           'z-index': '0',
           'pointer-events': 'none'
         }, init);
@@ -734,6 +784,7 @@
     animate: function(_, el, trans, type, dir, opt_target, opt_z, opt_pointer) {
       var anim = {
         'opacity': (type === 'in') ? '1': '0',
+        'filter': 'alpha(opacity=' + (type === 'in' ? '1': '0') + ')',
         'z-index': opt_z || (type === 'in' ? '1': '0'),
         'visibility': (type === 'in') ? 'visible': 'hidden',
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
@@ -778,7 +829,7 @@
 
     // Check whether width, height, and borderbox should by dynamically updated.
     dynamic: function(_) {
-      var clone = css(_.slidr.cloneNode(false), { 'position': 'absolute', 'opacity': '0' });
+      var clone = css(_.slidr.cloneNode(false), { 'position': 'absolute', 'opacity': '0', 'filter': 'alpha(opacity=0)' });
       var probe = css(createEl('div'), { 'width': '42px', 'height': '42px' });
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
@@ -850,9 +901,11 @@
       if (!_.started && _.slidr) {
         var display = css(_.slidr, 'display');
         var position = css(_.slidr, 'position');
+	var opacity = css(_.slidr, 'opacity');
         css(_.slidr, {
           'visibility': 'visible',
-          'opacity': css(_.slidr, 'opacity'),
+          'opacity': opacity,
+          'filter': 'alpha(opacity=' + opacity * 100 + ')',
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
           'overflow': (!!_.settings['overflow']) ? css(_.slidr, 'overflow') : 'hidden'
