@@ -96,13 +96,9 @@
   // If `prop` is a string, do a CSS lookup. Otherwise, add CSS styles to `el`.
   function css(el, prop) {
     if (typeof prop === 'string') {
-//      console.log("-->> prop: " + prop + ", browser.fix(prop): " + browser.fix(prop));
       var view = (document.defaultView) ? document.defaultView.getComputedStyle(el) : el.currentStyle;
-//      console.log('-->> ' + view);
       var style = view[browser.fix(prop)];
-//      console.log('-->> style: ' + style);
-//      console.log('-->> id name: ' + el.getAttribute('id'));
-//      if (prop === 'opacity') console.log('-->> yolo: ' + view.filter);
+      if (!style && prop === 'opacity') style = (view.filter) ? view.filter.split('=')[1].replace(')', '') : '1';
       if (style) {
         var val = style.slice(0, -2);
         return (style.slice(-2) === 'px' && !isNaN(parseInt(val)) && val.search('px') <= 0) ? parseInt(val) : style;
@@ -130,6 +126,13 @@
     // CSS property cache.
     cache: {},
 
+    // Flag for IE < 8.
+    isIE: function() {
+      if (browser.fix('filter') && !browser.fix('opacity')) browser.isIE = function() { return true; };
+      else browser.isIE = function() { return false; };
+      return browser.isIE();
+    },
+
     // Reference to the document style element.
     styleEl: document.getElementsByTagName('html')[0]['style'],
 
@@ -153,8 +156,12 @@
         }
       } else {
         browser.insertRule = function(r) {
-          var split = r.match(/([^[]+)\s/gi);
-          if (split.length > 1) browser.styleSheet.addRule(trim(split[0], trim(split[1])));
+          var split = r.split(' {');
+          if (split.length === 2) {
+            var left = split[0];
+            var right = trim(split[1].replace(/;?\s?}$/g, ''));
+            if (left && right) browser.styleSheet.addRule(left, right);
+          }
         }
       }
       browser.insertRule(rule);
@@ -177,7 +184,7 @@
     // Creates a CSS rule.
     createRule: function(name, props) {
       var rule = [name, '{'];
-      for (var p in props) rule.push(browser.fix(p, true) + ':' + props[p] + ';');
+      for (var p in props) if (browser.fix(p, true)) rule.push(browser.fix(p, true) + ':' + props[p] + ';');
       rule.push('}');
       return rule.join(' ');
     },
@@ -499,11 +506,12 @@
         'cursor': 'pointer',
         'transition': 'opacity 0.2s linear'
       }, true);
-      browser.createStyle(controls.cls.navcss + '.disabled', {
+      var disabled = {
         'opacity': '0.05',
-        'filter': 'alpha(opacity=5)',
         'cursor': 'auto'
-      }, true);
+      };
+      if (browser.isIE()) disabled['display'] = 'none';
+      browser.createStyle(controls.cls.navcss + '.disabled', disabled, true);
 
       for (var n in _.nav) {
         var horizontal = (n === 'left' || n === 'right');
@@ -712,6 +720,7 @@
           'z-index': '0',
           'pointer-events': 'none'
         }, init);
+        if (browser.isIE()) init = extend(init, {'display': 'none', 'visibility': 'visible'});
         s.initialized = true;
       }
       css(s.el, init);
@@ -781,6 +790,7 @@
         'visibility': (type === 'in') ? 'visible': 'hidden',
         'pointer-events': opt_pointer || (type === 'in' ? 'auto': 'none')
       };
+      if (browser.isIE()) anim = extend(anim, {'display': (type === 'in') ? 'block' : 'none', 'visibility': 'visible'});
       var target = opt_target || slides.get(_, el).el;
       var timing = _.settings['timing'][trans];
       if (fx.supported[trans] && timing) {
@@ -794,7 +804,7 @@
         anim['animation'] = (trans === 'none') ? 'none' : [name, timing].join(' ');
       }
       css(target, anim);
-      if (slides.get(_, el)) fx.fixTranslateZ(_, target, type);
+      if (slides.get(_, el) && browser.fix('transform')) fx.fixTranslateZ(_, target, type);
     },
 
     // Toggle translateZ on breadcrumbs/controls so it doesn't interfere with page flow.
