@@ -840,9 +840,11 @@
       var originalHeight = (borderbox ? size.heightPad(_) + size.heightBorder(_) : 0) + 42;
       var cloneWidth = css(clone, 'width');
       var cloneHeight = css(clone, 'height');
+      var minWidth = css(clone, 'min-width');
+      var minHeight = css(clone, 'min-height');
       var dynamic = {
-        width: cloneWidth === 'auto' || cloneWidth === originalWidth || css(clone, 'min-width') !== 0,
-        height: cloneHeight === 'auto' || cloneHeight === originalHeight || css(clone, 'min-height') !== 0,
+        width: cloneWidth === 'auto' || cloneWidth === originalWidth || minWidth !== 0 && minWidth != 'auto',
+        height: cloneHeight === 'auto' || cloneHeight === originalHeight || minHeight !== 0 && minHeight != 'auto',
         borderbox: borderbox
       };
       _.slidr.parentNode.removeChild(clone);
