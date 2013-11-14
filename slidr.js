@@ -128,7 +128,7 @@
 
     // Flag for IE < 8.
     isIE: function() {
-      if (browser.fix('filter') && !browser.fix('opacity')) browser.isIE = function() { return true; };
+      if (browser.supports('filter') && !browser.supports('opacity')) browser.isIE = function() { return true; };
       else browser.isIE = function() { return false; };
       return browser.isIE();
     },
@@ -144,16 +144,13 @@
     }()),
 
     cssRules: function() {
-      browser.cssRules = function() {
-        return browser.styleSheet.cssRules || browser.styleSheet.rules; };
+      browser.cssRules = function() { return browser.styleSheet.cssRules || browser.styleSheet.rules; };
       return browser.cssRules();
     },
 
     insertRule: function(rule) {
       if (browser.styleSheet.insertRule) {
-        browser.insertRule = function(r) {
-          browser.styleSheet.insertRule(r, browser.cssRules().length);
-        }
+        browser.insertRule = function(r) { browser.styleSheet.insertRule(r, browser.cssRules().length); };
       } else {
         browser.insertRule = function(r) {
           var split = r.split(' {');
@@ -804,7 +801,7 @@
         anim['animation'] = (trans === 'none') ? 'none' : [name, timing].join(' ');
       }
       css(target, anim);
-      if (slides.get(_, el) && browser.fix('transform')) fx.fixTranslateZ(_, target, type);
+      if (slides.get(_, el) && browser.supports('transform')) fx.fixTranslateZ(_, target, type);
     },
 
     // Toggle translateZ on breadcrumbs/controls so it doesn't interfere with page flow.
@@ -869,10 +866,14 @@
 
     // Sets the width/height of our Slidr container.
     setWidth: function(_, w, borderbox) {
-      css(_.slidr, { width: w + (borderbox ? size.widthPad(_) : 0) + 'px' }); return w;
+      if (w !== 'auto') w = w + (borderbox ? size.widthPad(_) : 0) + 'px';
+      css(_.slidr, { width: w });
+      return w;
     },
     setHeight: function(_, h, borderbox) {
-      css(_.slidr, { height: h + (borderbox ? size.heightPad(_) : 0) + 'px' }); return h;
+      if (h !== 'auto') h = h + (borderbox ? size.heightPad(_) : 0) + 'px';
+      css(_.slidr, { height: h });
+      return h;
     },
 
     // Monitor our Slidr and auto resize if necessary.
@@ -881,7 +882,7 @@
       var w = 0;
       var d = size.dynamic(_);
       var timerId = setInterval((function watch() {
-        if (!contains(document, _.slidr)) {
+        if (!browser.isIE() && !contains(document, _.slidr)) {
           clearInterval(timerId);
         } else if (css(_.slidr, 'visibility') === 'hidden') {
           h = size.setHeight(_, 0, d.borderbox);
@@ -890,6 +891,10 @@
           var el = slides.get(_, _.current).el;
           var height = css(el, 'height');
           var width = css(el, 'width');
+          if (browser.isIE()) {
+            if (height === 'auto' && el.offsetHeight) height = el.offsetHeight;
+            if (width === 'auto' && el.offsetWidth) width = el.offsetWidth;
+          }
           if (d.height && h != height) h = size.setHeight(_, height, d.borderbox);
           if (d.width && w != width) w = size.setWidth(_, width, d.borderbox);
         }
@@ -905,7 +910,7 @@
       if (!_.started && _.slidr) {
         var display = css(_.slidr, 'display');
         var position = css(_.slidr, 'position');
-	var opacity = css(_.slidr, 'opacity');
+        var opacity = css(_.slidr, 'opacity');
         css(_.slidr, {
           'visibility': 'visible',
           'opacity': opacity,
