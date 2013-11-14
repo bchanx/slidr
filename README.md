@@ -3,6 +3,8 @@ slidr.js
 
 A simple, lightweight javascript library for adding slide transitions to your page. No dependencies required.
 
+Tested on Chrome 26.0, Firefox 20.0, Safari 5.1.7, IE 10, Opera 16.0. Limited support for IE8/9.
+
 [Check out the demo here.](http://www.bchanx.com/slidr)
 
 ## Instructions
@@ -11,6 +13,7 @@ Include either `slidr.js` or `slidr.min.js` somewhere at the bottom of your html
 ```javascript
 <script type="text/javascript" src="/path/to/slidr.min.js"></script>
 ```
+
 --------
 ## HTML
 slidr.js works on any `inline`, `inline-block` or `block` elements with an `id` defined.
