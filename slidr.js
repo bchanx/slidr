@@ -143,11 +143,13 @@
       return el.sheet || el.styleSheet;
     }()),
 
+    // Get browser specific stylesheet rules.
     cssRules: function() {
       browser.cssRules = function() { return browser.styleSheet.cssRules || browser.styleSheet.rules; };
       return browser.cssRules();
     },
 
+    // Use browser specific insert for stylesheets.
     insertRule: function(rule) {
       if (browser.styleSheet.insertRule) {
         browser.insertRule = function(r) { browser.styleSheet.insertRule(r, browser.cssRules().length); };
