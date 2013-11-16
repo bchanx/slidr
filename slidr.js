@@ -599,6 +599,7 @@
         'transform': 'translateZ(0px) !important'
       }, true);
       browser.createStyle(breadcrumbs.cls.navcss, {
+        'padding': '0',
         'font-size': '0',
         'line-height': '0'
       }, true);
