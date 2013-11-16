@@ -522,7 +522,9 @@
 
         var ctrl = {
           'width': horizontal ? '22px': '16px',
-          'height': horizontal ? '16px' : '22px'
+          'height': horizontal ? '16px' : '22px',
+          'tap-highlight-color': 'rgba(0, 0, 0, 0)',
+          'touch-callout': 'none'
         };
         ctrl[pos] = '0';
         ctrl[dir] = '50%';
@@ -610,7 +612,9 @@
         'width': '10px',
         'height': '10px',
         'display': 'inline-block',
-        'margin': '3px'
+        'margin': '3px',
+        'tap-highlight-color': 'rgba(0, 0, 0, 0)',
+        'touch-callout': 'none'
       }, true);
       browser.createStyle(breadcrumbs.cls.id(_, true) + ' .' + breadcrumbs.cls.nav + ' li.normal', {
         'border-radius': '100%',
