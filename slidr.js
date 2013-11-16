@@ -22,7 +22,7 @@
   function lookup(obj, keys) {
     var result = obj;
     for (var k in keys) {
-      if (!result.hasOwnProperty(keys[k])) return null;
+      if (!result || !result.hasOwnProperty(keys[k])) return null;
       result = result[keys[k]];
     }
     return (result === obj) ? null : result;
@@ -126,6 +126,9 @@
     // CSS property cache.
     cache: {},
 
+    // CSS keyframe cache.
+    keyframes: {},
+
     // Flag for IE < 8.
     isIE: function() {
       if (browser.supports('filter') && !browser.supports('opacity')) browser.isIE = function() { return true; };
@@ -196,12 +199,13 @@
     // Creates a keyframe animation rule.
     createKeyframe: function(name, rules) {
       var animation = browser.fix('animation', true);
-      if (animation) {
+      if (animation && !browser.keyframes[name]) {
         var prefix = (animation.split('-').length === 3) ? '-' + animation.split('-')[1] + '-' : '';
         var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
         for (var r in rules) rule.push(browser.createRule(r + '%', rules[r]));
         rule.push('}');
         browser.addCSSRule(name, rule.join(' '));
+        browser.keyframes[name] = true;
       }
     },
 
@@ -244,20 +248,19 @@
       },
       'linear': function(name, type, tStart, tEnd, oStart, oEnd) {
         browser.createKeyframe(name, {
-          '0': { 'transform': 'translate' + (type === 'in' ? tEnd : tStart) + 'px)',
-            'opacity': (type === 'in' ? '0' : oStart), 'visibility': 'visible' },
-          '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': (type === 'in' ? '0' : oStart) },
-          '2': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
-          '98': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
-          '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': type === 'out' ? '0' : oEnd },
-          '100': { 'transform': 'translate' + (type === 'out' ? tStart : tEnd) + 'px)', 'visibility': 'hidden' }
+          '0': { 'transform': 'translate' + tStart[0] + '(0%)',
+            'opacity': (type === 'in' ? '0': oStart), 'visibility': 'visible' },
+          '1': { 'transform': 'translate' + tStart + (type === 'in' ? '100': '0') + '%)', 'opacity': oStart },
+          '99': { 'transform': 'translate' + tEnd + (type === 'in' ? '0' : '100') + '%)', 'opacity': oEnd },
+          '100': { 'transform': 'translate' + tEnd[0] + '(0%)',
+            'opacity': (type === 'out' ? '0' : oEnd), 'visibility': 'hidden' }
         });
       },
       'cube': function(name, rStart, rEnd, tZ, oStart, oEnd) {
         browser.createKeyframe(name, {
-          '0': { 'transform': 'rotate' + rStart + 'deg) translateZ(' + tZ + 'px)', 'opacity': oStart,
+          '0': { 'transform': 'rotate' + rStart + '0deg) translateZ(' + tZ + 'px)', 'opacity': oStart,
             'visibility': 'visible' },
-          '100': { 'transform': 'rotate' + rEnd + 'deg) translateZ(' + tZ + 'px)', 'opacity': oEnd,
+          '100': { 'transform': 'rotate' + rEnd + '0deg) translateZ(' + tZ + 'px)', 'opacity': oEnd,
             'visibility': 'hidden' }
         });
       }
@@ -707,23 +710,24 @@
 
     // CSS rules to apply to a slide on initialize.
     init: function(_, el, trans) {
-      var init = lookup(fx.animation, [trans, 'init']) || {};
       var s = slides.get(_, el);
       if (!s.initialized) {
         var display = css(s.el, 'display');
-        init = extend({
+        var init = {
           'display': (display === 'none') ? 'block' : display,
           'visibility': 'hidden',
           'position': 'absolute',
           'opacity': '0',
           'filter': 'alpha(opacity=0)',
           'z-index': '0',
-          'pointer-events': 'none'
-        }, init);
+          'pointer-events': 'none',
+          'backface-visibility': 'hidden',
+          'transform-style': 'preserve-3d'
+        }
         if (browser.isIE()) init = extend(init, {'display': 'none', 'visibility': 'visible'});
         s.initialized = true;
+        css(s.el, init);
       }
-      css(s.el, init);
     },
 
     // Properties defining animation support.
@@ -736,48 +740,56 @@
 
     // Defines our slide animations.
     animation: {
-      'fade': {
-        'init': (function() {
-          browser.add['fade']('slidr-fade-in', '0', '1');
-          browser.add['fade']('slidr-fade-out', '1', '0');
-          return null; 
-        })()
-      },
-      'linear': {
-        'in': {
-          'left': function(name, w, o) { browser.add['linear'](name, 'in', 'X(-' + w, 'X(0', o, '1'); },
-          'right': function(name, w, o) { browser.add['linear'](name, 'in', 'X(' + w, 'X(0', o, '1'); },
-          'up': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(-' + h, 'Y(0', o, '1'); },
-          'down': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(' + h, 'Y(0', o, '1'); }
-        },
-        'out': {
-          'left': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(' + w, '1', o); },
-          'right': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(-' + w, '1', o); },
-          'up': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(' + h, '1', o); },
-          'down': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(-' + h, '1', o); }
+      'fade': (function() {
+        browser.add['fade']('slidr-fade-in', '0', '1');
+        browser.add['fade']('slidr-fade-out', '1', '0');
+      })(),
+      'linear': (function() {
+        var n, names = ['-fade', ''];
+        for (var o in names) {
+          n = 'slidr-linear-in';
+          browser.add['linear'](n + '-left' + names[o] , 'in', 'X(-', 'X(', o, '1');
+          browser.add['linear'](n + '-right' + names[o], 'in', 'X(', 'X(', o, '1');
+          browser.add['linear'](n + '-up' + names[o], 'in', 'Y(-', 'Y(', o, '1');
+          browser.add['linear'](n + '-down' + names[o], 'in', 'Y(', 'Y(', o, '1');
+          n = 'slidr-linear-out';
+          browser.add['linear'](n + '-left' + names[o], 'out', 'X(', 'X(', '1', o);
+          browser.add['linear'](n + '-right' + names[o], 'out', 'X(', 'X(-', '1', o);
+          browser.add['linear'](n + '-up' + names[o], 'out', 'Y(', 'Y(', '1', o);
+          browser.add['linear'](n + '-down' + names[o], 'out', 'Y(', 'Y(-', '1', o);
         }
-      },
+      })(),
       'cube': {
-        'init': { 'backface-visibility': 'hidden', 'transform-style': 'preserve-3d' },
         'in': {
-          'left': function(name, w, o) { browser.add['cube'](name, 'Y(-90', 'Y(0', w/2, o, '1'); },
-          'right': function(name, w, o) { browser.add['cube'](name, 'Y(90', 'Y(0', w/2, o, '1'); },
-          'up': function(name, h, o) { browser.add['cube'](name, 'X(90', 'X(0', h/2, o, '1'); },
-          'down': function(name, h, o) { browser.add['cube'](name, 'X(-90', 'X(0', h/2, o, '1'); }
+          'left': function(name, w, o) { browser.add['cube'](name, 'Y(-9', 'Y(', w/2, o, '1'); },
+          'right': function(name, w, o) { browser.add['cube'](name, 'Y(9', 'Y(', w/2, o, '1'); },
+          'up': function(name, h, o) { browser.add['cube'](name, 'X(9', 'X(', h/2, o, '1'); },
+          'down': function(name, h, o) { browser.add['cube'](name, 'X(-9', 'X(', h/2, o, '1'); }
         },
         'out': {
-          'left': function(name, w, o) { browser.add['cube'](name, 'Y(0', 'Y(90', w/2, '1', o); },
-          'right': function(name, w, o) { browser.add['cube'](name, 'Y(0', 'Y(-90', w/2, '1', o); },
-          'up': function(name, h, o) { browser.add['cube'](name, 'X(0', 'X(-90', h/2, '1', o); },
-          'down': function(name, h, o) { browser.add['cube'](name, 'X(0', 'X(90', h/2, '1', o); }
+          'left': function(name, w, o) { browser.add['cube'](name, 'Y(', 'Y(9', w/2, '1', o); },
+          'right': function(name, w, o) { browser.add['cube'](name, 'Y(', 'Y(-9', w/2, '1', o); },
+          'up': function(name, h, o) { browser.add['cube'](name, 'X(', 'X(-9', h/2, '1', o); },
+          'down': function(name, h, o) { browser.add['cube'](name, 'X(', 'X(9', h/2, '1', o); }
         }
       }
     },
 
     // Resolve keyframe animation name.
-    name: function(_, trans, type, dir) {
-      var parts = [trans === 'fade' ? 'slidr' : _.id, trans, type];
-      if (trans !== 'fade') parts.push(dir);
+    name: function(_, target, trans, type, dir) {
+      var parts = ['slidr', trans, type];
+      if ((trans === 'linear' || trans === 'cube') && dir) {
+        parts.push(dir);
+        var opacity = (!!_.settings['fade']) ? '0' : '1';
+        if (opacity === '0') parts.push('fade');
+        if (trans === 'cube') {
+          var prop = (dir === 'up' || dir === 'down') ? 'height' : 'width';
+          var size = css(target, prop);
+          parts.push(prop[0], size);
+          var keyframe = lookup(fx.animation, [trans, type, dir]);
+          if (keyframe) keyframe(parts.join('-'), size, opacity);
+        }
+      }
       return parts.join('-');
     },
 
@@ -794,13 +806,7 @@
       var target = opt_target || slides.get(_, el).el;
       var timing = _.settings['timing'][trans];
       if (fx.supported[trans] && timing) {
-        var name = fx.name(_, trans, type, dir);
-        var keyframe = lookup(fx.animation, [trans, type, dir]);
-        if (keyframe && dir) {
-          var size = css(target, (dir === 'up' || dir === 'down') ? 'height' : 'width');
-          var opacity = (!!_.settings['fade']) ? '0' : '1';
-          keyframe(name, size, opacity);
-        }
+        var name = fx.name(_, target, trans, type, dir);
         anim['animation'] = (trans === 'none') ? 'none' : [name, timing].join(' ');
       }
       css(target, anim);
