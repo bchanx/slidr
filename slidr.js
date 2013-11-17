@@ -524,7 +524,8 @@
           'width': horizontal ? '22px': '16px',
           'height': horizontal ? '16px' : '22px',
           'tap-highlight-color': 'rgba(0, 0, 0, 0)',
-          'touch-callout': 'none'
+          'touch-callout': 'none',
+          'user-select': 'none'
         };
         ctrl[pos] = '0';
         ctrl[dir] = '50%';
@@ -614,7 +615,8 @@
         'display': 'inline-block',
         'margin': '3px',
         'tap-highlight-color': 'rgba(0, 0, 0, 0)',
-        'touch-callout': 'none'
+        'touch-callout': 'none',
+        'user-select': 'none'
       }, true);
       browser.createStyle(breadcrumbs.cls.id(_, true) + ' .' + breadcrumbs.cls.nav + ' li.normal', {
         'border-radius': '100%',
