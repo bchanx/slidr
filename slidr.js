@@ -250,8 +250,8 @@
         browser.createKeyframe(name, {
           '0': { 'transform': 'translate' + tStart[0] + '(0%)',
             'opacity': (type === 'in' ? '0': oStart), 'visibility': 'visible' },
-          '1': { 'transform': 'translate' + tStart + (type === 'in' ? '100': '0') + '%)', 'opacity': oStart },
-          '99': { 'transform': 'translate' + tEnd + (type === 'in' ? '0' : '100') + '%)', 'opacity': oEnd },
+          '1': { 'transform': 'translate' + tStart + 'px)', 'opacity': oStart },
+          '99': { 'transform': 'translate' + tEnd + 'px)', 'opacity': oEnd },
           '100': { 'transform': 'translate' + tEnd[0] + '(0%)',
             'opacity': (type === 'out' ? '0' : oEnd), 'visibility': 'hidden' }
         });
@@ -750,21 +750,20 @@
         browser.add['fade']('slidr-fade-in', '0', '1');
         browser.add['fade']('slidr-fade-out', '1', '0');
       })(),
-      'linear': (function() {
-        var n, names = ['-fade', ''];
-        for (var o in names) {
-          n = 'slidr-linear-in';
-          browser.add['linear'](n + '-left' + names[o] , 'in', 'X(-', 'X(', o, '1');
-          browser.add['linear'](n + '-right' + names[o], 'in', 'X(', 'X(', o, '1');
-          browser.add['linear'](n + '-up' + names[o], 'in', 'Y(-', 'Y(', o, '1');
-          browser.add['linear'](n + '-down' + names[o], 'in', 'Y(', 'Y(', o, '1');
-          n = 'slidr-linear-out';
-          browser.add['linear'](n + '-left' + names[o], 'out', 'X(', 'X(', '1', o);
-          browser.add['linear'](n + '-right' + names[o], 'out', 'X(', 'X(-', '1', o);
-          browser.add['linear'](n + '-up' + names[o], 'out', 'Y(', 'Y(', '1', o);
-          browser.add['linear'](n + '-down' + names[o], 'out', 'Y(', 'Y(-', '1', o);
+      'linear': {
+        'in': {
+          'left': function(name, w, o) { browser.add['linear'](name, 'in', 'X(-' + w, 'X(0', o, '1'); },
+          'right': function(name, w, o) { browser.add['linear'](name, 'in', 'X(' + w, 'X(0', o, '1'); },
+          'up': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(-' + h, 'Y(0', o, '1'); },
+          'down': function(name, h, o) { browser.add['linear'](name, 'in', 'Y(' + h, 'Y(0', o, '1'); }
+        },
+        'out': {
+          'left': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(' + w, '1', o); },
+          'right': function(name, w, o) { browser.add['linear'](name, 'out', 'X(0', 'X(-' + w, '1', o); },
+          'up': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(' + h, '1', o); },
+          'down': function(name, h, o) { browser.add['linear'](name, 'out', 'Y(0', 'Y(-' + h, '1', o); }
         }
-      })(),
+      },
       'cube': {
         'in': {
           'left': function(name, w, o) { browser.add['cube'](name, 'Y(-9', 'Y(', w/2, o, '1'); },
@@ -788,13 +787,11 @@
         parts.push(dir);
         var opacity = (!!_.settings['fade']) ? '0' : '1';
         if (opacity === '0') parts.push('fade');
-        if (trans === 'cube') {
-          var prop = (dir === 'up' || dir === 'down') ? 'height' : 'width';
-          var size = css(target, prop);
-          parts.push(prop[0], size);
-          var keyframe = lookup(fx.animation, [trans, type, dir]);
-          if (keyframe) keyframe(parts.join('-'), size, opacity);
-        }
+        var prop = (dir === 'up' || dir === 'down') ? 'height' : 'width';
+        var size = css(target, prop);
+        parts.push(prop[0], size);
+        var keyframe = lookup(fx.animation, [trans, type, dir]);
+        if (keyframe) keyframe(parts.join('-'), size, opacity);
       }
       return parts.join('-');
     },
