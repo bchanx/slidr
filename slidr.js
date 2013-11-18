@@ -907,7 +907,8 @@
           'filter': 'alpha(opacity=' + opacity * 100 + ')',
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
-          'overflow': (!!_.settings['overflow']) ? css(_.slidr, 'overflow') : 'hidden'
+          'overflow': (!!_.settings['overflow']) ? css(_.slidr, 'overflow') : 'hidden',
+          'transition': 'height 0.05s ease-out, width 0.05s ease-out'
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
