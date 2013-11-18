@@ -838,6 +838,14 @@
 
   var size = {
 
+    // Active Slidr's to listen for resize.
+    active: {},
+
+    // Add Slidr's we want to monitor.
+    autoResize: function(_) {
+      size.active[_.id] = { src: _, h: 0, w: 0, d: size.dynamic(_) };
+    },
+
     // Check whether width, height, and borderbox should by dynamically updated.
     dynamic: function(_) {
       var clone = css(_.slidr.cloneNode(false), { 'position': 'absolute', 'opacity': '0', 'filter': 'alpha(opacity=0)' });
@@ -845,8 +853,8 @@
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
       var borderbox = css(clone, 'box-sizing') === 'border-box';
-      var originalWidth = (borderbox ? size.widthPad(_) + size.widthBorder(_) : 0) + 42;
-      var originalHeight = (borderbox ? size.heightPad(_) + size.heightBorder(_) : 0) + 42;
+      var originalWidth = (borderbox ? size.widthPad(_.slidr) + size.widthBorder(_.slidr) : 0) + 42;
+      var originalHeight = (borderbox ? size.heightPad(_.slidr) + size.heightBorder(_.slidr) : 0) + 42;
       var cloneWidth = css(clone, 'width');
       var cloneHeight = css(clone, 'height');
       var minWidth = css(clone, 'min-width');
@@ -861,57 +869,27 @@
     },
 
     // Grabs the Slidr width/height padding.
-    widthPad: function(_) {
-      return css(_.slidr, 'padding-left') + css(_.slidr, 'padding-right');
-    },
-    heightPad: function(_) {
-      return css(_.slidr, 'padding-top') + css(_.slidr, 'padding-bottom');
-    },
+    widthPad: function(el) { return css(el, 'padding-left') + css(el, 'padding-right'); },
+    heightPad: function(el) { return css(el, 'padding-top') + css(el, 'padding-bottom'); },
+
+    // Grabs the Slidr width/height margin.
+    widthMargin: function(el) { return css(el, 'margin-left') + css(el, 'margin-right'); },
+    heightMargin: function(el) { return css(el, 'margin-top') + css(el, 'margin-bottom'); },
 
     // Grabs the Slidr width/height border.
-    widthBorder: function(_) {
-      return css(_.slidr, 'border-left-width') + css(_.slidr, 'border-right-width');
-    },
-    heightBorder: function(_) {
-      return css(_.slidr, 'border-top-width') + css(_.slidr, 'border-bottom-width');
-    },
+    widthBorder: function(el) { return css(el, 'border-left-width') + css(el, 'border-right-width'); },
+    heightBorder: function(el) { return css(el, 'border-top-width') + css(el, 'border-bottom-width'); },
 
     // Sets the width/height of our Slidr container.
     setWidth: function(_, w, borderbox) {
-      if (w !== 'auto') w = w + (borderbox ? size.widthPad(_) : 0) + 'px';
-      css(_.slidr, { width: w });
+      if (w !== 'auto') w = w + (borderbox ? size.widthPad(_.slidr) : 0);
+      css(_.slidr, { width: w + 'px' });
       return w;
     },
     setHeight: function(_, h, borderbox) {
-      if (h !== 'auto') h = h + (borderbox ? size.heightPad(_) : 0) + 'px';
-      css(_.slidr, { height: h });
+      if (h !== 'auto') h = h + (borderbox ? size.heightPad(_.slidr) : 0);
+      css(_.slidr, { height: h + 'px' });
       return h;
-    },
-
-    // Monitor our Slidr and auto resize if necessary.
-    autoResize: function(_) {
-      var h = 0;
-      var w = 0;
-      var d = size.dynamic(_);
-      var timerId = setInterval((function watch() {
-        if (!browser.isIE() && !contains(document, _.slidr)) {
-          clearInterval(timerId);
-        } else if (css(_.slidr, 'visibility') === 'hidden') {
-          h = size.setHeight(_, 0, d.borderbox);
-          w = size.setWidth(_, 0, d.borderbox);
-        } else if (slides.get(_, _.current)) {
-          var el = slides.get(_, _.current).el;
-          var height = css(el, 'height');
-          var width = css(el, 'width');
-          if (browser.isIE()) {
-            if (height === 'auto' && el.offsetHeight) height = el.offsetHeight;
-            if (width === 'auto' && el.offsetWidth) width = el.offsetWidth;
-          }
-          if (d.height && h != height) h = size.setHeight(_, height, d.borderbox);
-          if (d.width && w != width) w = size.setWidth(_, width, d.borderbox);
-        }
-        return watch;
-      })(), 250);
     }
   };
 
@@ -1156,6 +1134,34 @@
 
     return api;
   };
+
+  // Global timer for dynamic sizing.
+  var TIMER = setInterval((function watch() {
+    var _, cur;
+    for (var a in size.active) {
+      cur = size.active[a];
+      _ = cur.src;
+      if (!browser.isIE() && !contains(document, _.slidr)) {
+        delete size.active[a];
+      } else if (css(_.slidr, 'visibility') === 'hidden') {
+        size.active[a].h = size.setHeight(_, 0, cur.d.borderbox);
+        size.active[a].w = size.setWidth(_, 0, cur.d.borderbox);
+      } else if (slides.get(_, _.current)) {
+        var el = slides.get(_, _.current).el;
+        var height = css(el, 'height');
+        var width = css(el, 'width');
+        if (browser.isIE()) {
+          if (height === 'auto' && el.offsetHeight) height = el.offsetHeight;
+          if (width === 'auto' && el.offsetWidth) width = el.offsetWidth;
+        }
+        if (height !== 'auto') height += size.heightMargin(el);
+        if (width !== 'auto') width += size.widthMargin(el);
+        if (cur.d.height && cur.h != height) size.active[a].h = size.setHeight(_, height, cur.d.borderbox);
+        if (cur.d.width && cur.w != width) size.active[a].w = size.setWidth(_, width, cur.d.borderbox);
+      }
+    }
+    return watch;
+  })(), 250);
 
   // Current version.
   var VERSION = '0.2.0';
