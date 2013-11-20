@@ -893,6 +893,59 @@
     }
   };
 
+  var nav = {
+
+    // Mouse events.
+    mouse: {
+
+      // Slidr's with mouseover.
+      over: [],
+
+      // Whether a slidr-id already has mouseover.
+      isOver: function(id) { return indexOf(mouse.over, id) >= 0; },
+
+      // Add a slidr-id with mouseover event.
+      add: function(id) { if (!mouse.isOver(id)) mouse.over.push(id); },
+
+      // Remove a slidr-id from mouseover event.
+      remove: function(id) { if (mouse.isOver(id)) mouse.over.splice(indexOf(mouse.over, id), 1); },
+
+      // Get the current top level Slidr being mouse'd over.
+      current: function() {
+        var c = mouse.over[mouse.over.length-1];
+        for (var i = 0, l = mouse.over.length, m = mouse.over[i]; i < l; i++) if (contains(c, m)) c = m;
+        return c;
+      },
+
+      // Track mouseover/mouseleave events.
+      track: function(el) {
+        bind(el, 'mouseover', function(e) { mouse.add(e.currentTarget.id); });
+        bind(el, 'mouseleave', function(e) { mouse.remove(e.currentTarget.id); });
+      }
+    },
+
+    // Keyboard events.
+    keyboard: (function() {
+      bind(document, 'keydown', function(e) {
+        if (mouse.current() && e.which <= 40 && e.which >= 37) {
+          var c = INSTANCES[mouse.current()];
+          var dir = null;
+          if (e.which === 40 && c.canSlide('down')) { dir = 'down'; }
+          else if (e.which === 39 && c.canSlide('right')) { dir = 'right'; }
+          else if (e.which === 38 && c.canSlide('up')) { dir = 'up'; }
+          else if (e.which === 37 && c.canSlide('left')) { dir = 'left'; }
+          if (dir) {
+            c.slide(dir);
+            e.preventDefault();
+          }
+        }
+      });
+    })(),
+
+    // Touch events.
+    touch: { }
+  };
+
   var actions = {
 
     // Starts a Slidr.
@@ -915,6 +968,7 @@
         slides.display(_);
         size.autoResize(_);
         fx.fixTranslateZ(_, _.slidr);
+        if (_.settings['keyboard']) nav.mouse.track(_.slidr);
         _.started = true;
         controls.update(_);
       }
@@ -1144,6 +1198,7 @@
       _ = cur.src;
       if (!browser.isIE() && !contains(document, _.slidr)) {
         delete size.active[a];
+        delete INSTANCES[_.id];
       } else if (css(_.slidr, 'visibility') === 'hidden') {
         size.active[a].h = size.setHeight(_, 0, cur.d.borderbox);
         size.active[a].w = size.setWidth(_, 0, cur.d.borderbox);
@@ -1176,6 +1231,7 @@
     'controls': 'border',         // Show or hide control arrows on start(). `border`, `corner` or `none`.
     'direction': 'horizontal',    // The default direction for new slides. `horizontal` or `h`, `vertical` or `v`.
     'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
+    'keyboard': false,            // Whether to enable keyboard navigation upon mouseover. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
     'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
