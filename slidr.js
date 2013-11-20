@@ -902,33 +902,33 @@
       over: [],
 
       // Whether a slidr-id already has mouseover.
-      isOver: function(id) { return indexOf(mouse.over, id) >= 0; },
+      isOver: function(id) { return indexOf(nav.mouse.over, id) >= 0; },
 
       // Add a slidr-id with mouseover event.
-      add: function(id) { if (!mouse.isOver(id)) mouse.over.push(id); },
+      add: function(id) { if (!nav.mouse.isOver(id)) nav.mouse.over.push(id); },
 
       // Remove a slidr-id from mouseover event.
-      remove: function(id) { if (mouse.isOver(id)) mouse.over.splice(indexOf(mouse.over, id), 1); },
+      remove: function(id) { if (nav.mouse.isOver(id)) nav.mouse.over.splice(indexOf(nav.mouse.over, id), 1); },
 
       // Get the current top level Slidr being mouse'd over.
       current: function() {
-        var c = mouse.over[mouse.over.length-1];
-        for (var i = 0, l = mouse.over.length, m = mouse.over[i]; i < l; i++) if (contains(c, m)) c = m;
+        var c = nav.mouse.over[nav.mouse.over.length-1];
+        for (var i = 0, l = nav.mouse.over.length, m = nav.mouse.over[i]; i < l; i++) if (contains(c, m)) c = m;
         return c;
       },
 
       // Track mouseover/mouseleave events.
       track: function(el) {
-        bind(el, 'mouseover', function(e) { mouse.add(e.currentTarget.id); });
-        bind(el, 'mouseleave', function(e) { mouse.remove(e.currentTarget.id); });
+        bind(el, 'mouseover', function(e) { nav.mouse.add(e.currentTarget.id); });
+        bind(el, 'mouseleave', function(e) { nav.mouse.remove(e.currentTarget.id); });
       }
     },
 
     // Keyboard events.
     keyboard: (function() {
       bind(document, 'keydown', function(e) {
-        if (mouse.current() && e.which <= 40 && e.which >= 37) {
-          var c = INSTANCES[mouse.current()];
+        if (nav.mouse.current() && e.which <= 40 && e.which >= 37) {
+          var c = INSTANCES[nav.mouse.current()];
           var dir = null;
           if (e.which === 40 && c.canSlide('down')) { dir = 'down'; }
           else if (e.which === 39 && c.canSlide('right')) { dir = 'right'; }
