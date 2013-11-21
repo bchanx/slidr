@@ -7,6 +7,12 @@ Tested on Chrome 26.0, Firefox 20.0, Safari 5.1.7, IE 10, Opera 16.0. Limited su
 
 [Check out the demo here.](http://www.bchanx.com/slidr)
 
+## Features
+- **Add as many Slidr's as you want** - *even place them within each other.*
+- **Dynamic resizing** - *adapts to the size of its content, unless you don't want it to.*
+- **Keyboard navigation** - *move your cursor on top of a Slidr, and hit the arrow keys!*
+- **Touch navigation** (mobile) - *change slides by swiping left, right, up or down!*
+
 ## Instructions
 Include either `slidr.js` or `slidr.min.js` somewhere at the bottom of your html page, after the body content.
 
@@ -14,7 +20,6 @@ Include either `slidr.js` or `slidr.min.js` somewhere at the bottom of your html
 <script type="text/javascript" src="/path/to/slidr.min.js"></script>
 ```
 
---------
 ## HTML
 slidr.js works on any `inline`, `inline-block` or `block` elements with an `id` defined.
 Valid slides include any first-level children elements with the `data-slidr` attribute set to some unique value within the parent scope. For example:
@@ -42,25 +47,26 @@ Valid slides include any first-level children elements with the `data-slidr` att
 are all valid html markup for creating three different `Slidr`'s within the same page.
 (inline elements are transformed into inline-blocks in order to apply transitions).
 
-------------
 ## Javascript
 A global `slidr` object is available for calling. The most minimal way of creating a slidr is this:
 
 ```javascript
-slidr.create('slidr-ul').start();
+slidr.create('slidr-id').start();
 ```
 
 `create()` accepts an optional settings parameter as its second argument. A call with all the settings toggled looks like so:
 
 ```javascript
-slidr.create('slidr-ul', {
+slidr.create('slidr-id', {
   breadcrumbs: true,
   controls: 'corner',
   direction: 'vertical',
   fade: false,
+  keyboard: true,
   overflow: true,
   theme: '#222',
   timing: { 'cube': '0.5s ease-in' },
+  touch: true,
   transition: 'cube'
 }).start();
 ```
@@ -74,9 +80,11 @@ Full details on available settings listed below:
 | `controls`    | _string_  | border     | Show or hide control arrows on start(). `border`, `corner` or `none`.         |
 | `direction`   | _string_  | horizontal | The default direction for new slides. `horizontal` or `h`, `vertical` or `v`. |
 | `fade`        | _bool_    | true       | Whether slide transitions should fade in/out. `true` or `false`.              |
+| `keyboard`    | _bool_    | false      | Whether to enable keyboard navigation upon mouseover. `true` or `false`.      |
 | `overflow`    | _bool_    | false      | Whether to overflow transitions at slidr borders. `true` or `false`.          |
 | `theme`       | _string_  | #fff       | Sets color theme for breadcrumbs/controls. `#hexcode` or `rgba(value)`.       |
 | `timing`      | _object_  | {}         | Custom animation timings to apply. `{'transition': 'timing'}`.                |
+| `touch`       | _bool_    | false      | Whether to enable touch navigation for mobile devices. `true` or `false`.     |
 | `transition`  | _string_  | linear     | The default transition to apply. `cube`, `linear`, `fade`, or `none`.         |
 
 ### Global API
@@ -209,7 +217,6 @@ The full list of available functions in a `Slidr` object is listed below:
  function controls(opt_scheme) {};
 ```
 
-------------
 ## CSS
 
 ### Temporary scrollbar during transitions
@@ -222,7 +229,7 @@ body {
 }
 ```
 
-### Auto resize
+### Dynamic resize
 `Slidr` follows a fairly straightforward heuristic for figuring out what it's width or height should be. If the `width`
 and `height` is explicitly set, `Slidr` will not resize. Otherwise, it will always adapt to the size of its content.
 You can also set just one and it'll dynamic resize the other.
@@ -345,7 +352,6 @@ In the worst case, feel free to create your own controllers and access via the S
 
 For further questions or issues, visit [here](https://github.com/bchanx/slidr/issues).
 
-------------
 ## License
 
 This software is free to use under the MIT license.

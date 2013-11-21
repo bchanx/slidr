@@ -1,5 +1,5 @@
 /*!
- * slidr v0.2.0 - A Javascript library for adding slide effects.
+ * slidr v0.3.0 - A Javascript library for adding slide effects.
  * bchanx.com/slidr
  * MIT licensed
  *
@@ -1258,7 +1258,7 @@
   })(), 250);
 
   // Current version.
-  var VERSION = '0.2.0';
+  var VERSION = '0.3.0';
 
   // Active Slidr instances.
   var INSTANCES = {};
@@ -1273,7 +1273,7 @@
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
     'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
-    'touch': false,               // Whether to enable touch naviation for mobile devices. `true` or `false`.
+    'touch': false,               // Whether to enable touch navigation for mobile devices. `true` or `false`.
     'transition': 'linear'        // The default transition to apply. `cube`, `linear`, `fade`, or `none`.
   };
 
