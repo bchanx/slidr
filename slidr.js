@@ -286,6 +286,15 @@
         data: 'data-slidr-' + cls,
         id: function(_, css) { return css ? 'aside[id="' + _.id + '-' + cls + '"]' : _.id + '-' + cls; }
       }
+    },
+
+    // Sanitize events for IE.
+    sanitize: function(e) {
+      e = e || window.event;
+      if (!e.target) e.target = e.srcElement;
+      if (!e.currentTarget) e.currentTarget = e.srcElement;
+      if (!e.which && e.keyCode) e.which = e.keyCode;
+      return e;
     }
   };
 
@@ -567,11 +576,7 @@
 
     // On click callback.
     onclick: function(_) {
-      return function handler(e) {
-        e = e || window.event;
-        if (!e.target) e.target = e.srcElement;
-        actions.slide(_, getattr(e.target, controls.cls.data));
-      }
+      return function handler(e) { actions.slide(_, getattr(browser.sanitize(e).target, controls.cls.data)); };
     },
 
     // Update controls.
@@ -644,11 +649,7 @@
 
     // On click callback.
     onclick: function(_) {
-      return function handler(e) {
-        e = e || window.event;
-        if (!e.target) e.target = e.srcElement;
-        actions.slide(_, getattr(e.target, breadcrumbs.cls.data));
-      }
+      return function handler(e) { actions.slide(_, getattr(browser.sanitize(e).target, breadcrumbs.cls.data)); };
     },
 
     // Breadcrumb offsets.
@@ -927,16 +928,17 @@
         return c;
       },
 
-      // Track mouseover/mouseleave events.
+      // Track mouseenter/mouseleave events.
       track: function(el) {
-        bind(el, 'mouseover', function(e) { nav.mouse.add(e.currentTarget.id); });
-        bind(el, 'mouseleave', function(e) { nav.mouse.remove(e.currentTarget.id); });
+        bind(el, 'mouseenter', function(e) { nav.mouse.add(browser.sanitize(e).currentTarget.id); });
+        bind(el, 'mouseleave', function(e) { nav.mouse.remove(browser.sanitize(e).currentTarget.id); });
       }
     },
 
     // Keyboard events.
     keyboard: (function() {
       bind(document, 'keydown', function(e) {
+        e = browser.sanitize(e);
         if (nav.mouse.current() && e.which <= 40 && e.which >= 37) {
           var c = INSTANCES[nav.mouse.current()];
           var dir = null;
@@ -954,10 +956,12 @@
       var start = {};
       var delta = {};
       bind(_.slidr, 'touchstart', function(e) {
+        e = browser.sanitize(e);
         start = { x: e.touches[0].pageX, y: e.touches[0].pageY, time: +new Date };
         delta = { x: 0, y: 0, duration: 0 };
       });
       bind(_.slidr, 'touchmove', function(e) {
+        e = browser.sanitize(e);
         if (e.touches.length > 1 || e.scale && e.scale !== 1) return;
         delta.x = e.touches[0].pageX - start.x;
         delta.y = e.touches[0].pageY - start.y;
@@ -966,6 +970,7 @@
         stop(e);
       });
       bind(_.slidr, 'touchend', function(e) {
+        e = browser.sanitize(e);
         if (Number(+new Date - start.time) < 250) {
           var dx = Math.abs(delta.x);
           var dy = Math.abs(delta.y);
