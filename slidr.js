@@ -118,6 +118,16 @@
     }
   }
 
+  // Stop event propagation.
+  function stop(e) {
+    e = e || window.event;
+    e.cancelBubble = true;
+    e.returnValue = false;
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+    return false;
+  }
+
   var browser = {
 
     // Vendor prefixes.
@@ -930,20 +940,45 @@
         if (nav.mouse.current() && e.which <= 40 && e.which >= 37) {
           var c = INSTANCES[nav.mouse.current()];
           var dir = null;
-          if (e.which === 40 && c.canSlide('down')) { dir = 'down'; }
-          else if (e.which === 39 && c.canSlide('right')) { dir = 'right'; }
-          else if (e.which === 38 && c.canSlide('up')) { dir = 'up'; }
-          else if (e.which === 37 && c.canSlide('left')) { dir = 'left'; }
-          if (dir) {
-            c.slide(dir);
-            e.preventDefault();
-          }
+          if (e.which === 40 && c['canSlide']('down')) { dir = 'down'; }
+          else if (e.which === 39 && c['canSlide']('right')) { dir = 'right'; }
+          else if (e.which === 38 && c['canSlide']('up')) { dir = 'up'; }
+          else if (e.which === 37 && c['canSlide']('left')) { dir = 'left'; }
+          if (dir) c['slide'](dir) && stop(e);
         }
       });
     })(),
 
     // Touch events.
-    touch: { }
+    touch: function(_) {
+      var start = {};
+      var delta = {};
+      bind(_.slidr, 'touchstart', function(e) {
+        start = { x: e.touches[0].pageX, y: e.touches[0].pageY, time: +new Date };
+        delta = { x: 0, y: 0, duration: 0 };
+      });
+      bind(_.slidr, 'touchmove', function(e) {
+        if (e.touches.length > 1 || e.scale && e.scale !== 1) return;
+        delta.x = e.touches[0].pageX - start.x;
+        delta.y = e.touches[0].pageY - start.y;
+        delta.duration = +new Date - start.time;
+        if (delta.duration > 100 && (Math.abs(delta.x) + Math.abs(delta.y))/delta.duration < 0.25) return;
+        stop(e);
+      });
+      bind(_.slidr, 'touchend', function(e) {
+        if (Number(+new Date - start.time) < 250) {
+          var dx = Math.abs(delta.x);
+          var dy = Math.abs(delta.y);
+          var validH = dx > 20;
+          var validV = dy > 20;
+          var dirH = delta.x < 0 ? 'right': 'left';
+          var dirV = delta.y < 0 ? 'down' : 'up';
+          var dir = (validH && validV ? (dx > dy ? dirH : dirV) : (validH ? dirH : (validV ? dirV : null)));
+          if (dir) actions.slide(_, dir);
+          stop(e);
+        }
+      });
+    }
   };
 
   var actions = {
@@ -961,7 +996,9 @@
           'display': (display === 'inline-block' || display === 'inline') ? 'inline-block' : 'block',
           'position': (position === 'static') ? 'relative' : position,
           'overflow': (!!_.settings['overflow']) ? css(_.slidr, 'overflow') : 'hidden',
-          'transition': 'height 0.05s ease-out, width 0.05s ease-out'
+          'transition': 'height 0.05s ease-out, width 0.05s ease-out',
+          'tap-highlight-color': 'rgba(0, 0, 0, 0)',
+          'touch-callout': 'none'
         });
         if (!_.start) actions.add(_, _.settings['direction'], slides.find(_, true), _.settings['transition']);
         if (slides.get(_, opt_start)) _.start = opt_start;
@@ -969,6 +1006,7 @@
         size.autoResize(_);
         fx.fixTranslateZ(_, _.slidr);
         if (_.settings['keyboard']) nav.mouse.track(_.slidr);
+        if (_.settings['touch']) nav.touch(_);
         _.started = true;
         controls.update(_);
       }
@@ -976,12 +1014,12 @@
 
     // Can we slide?
     canSlide: function(_, next) {
-      return _.started && (slides.isdir(next) ? !!slides.get(_, _.current, next) : !!slides.get(_, next));
+      return _.started && next && (slides.isdir(next) ? !!slides.get(_, _.current, next) : !!slides.get(_, next));
     },
 
     // Slide.
     slide: function(_, next) {
-      if (_.started && next) slides.slide(_, next);
+      if (actions.canSlide(_, next)) slides.slide(_, next);
     },
 
     // Adds a set of slides.
@@ -1235,6 +1273,7 @@
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
     'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
+    'touch': false,               // Whether to enable touch naviation for mobile devices. `true` or `false`.
     'transition': 'linear'        // The default transition to apply. `cube`, `linear`, `fade`, or `none`.
   };
 
