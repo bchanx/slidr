@@ -118,14 +118,9 @@
     }
   }
 
-  // Stop event propagation.
-  function stop(e) {
-    e = e || window.event;
-    e.cancelBubble = true;
-    e.returnValue = false;
-    if (e.stopPropagation) e.stopPropagation();
-    if (e.preventDefault) e.preventDefault();
-    return false;
+  // Check whether element has border-box set.
+  function borderbox(el) {
+    return css(el, 'box-sizing') === 'border-box';
   }
 
   var browser = {
@@ -295,6 +290,16 @@
       if (!e.currentTarget) e.currentTarget = e.srcElement;
       if (!e.which && e.keyCode) e.which = e.keyCode;
       return e;
+    },
+
+    // Stop event propagation.
+    stop: function(e) {
+      e = e || window.event;
+      e.cancelBubble = true;
+      e.returnValue = false;
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.preventDefault) e.preventDefault();
+      return false;
     }
   };
 
@@ -502,8 +507,8 @@
     css: function(_) {
       browser.createStyle(controls.cls.maincss, {
         'position': 'absolute',
-        'bottom': '0',
-        'right': '0',
+        'bottom': css(_.slidr, 'padding-bottom') + 'px',
+        'right': css(_.slidr, 'padding-right') + 'px',
         'padding': '10px',
         'box-sizing': 'border-box',
         'width': '75px',
@@ -514,10 +519,13 @@
         'transform': 'translateZ(0px) !important'
       }, true);
       browser.createStyle(controls.cls.maincss + '.breadcrumbs', {
-        'left': '0',
+        'left': css(_.slidr, 'padding-left') + 'px',
         'right': 'auto'
       }, true);
       browser.createStyle(controls.cls.maincss + '.border', {
+        'bottom': '0',
+        'right': '0',
+        'left': '0',
         'width': '100%',
         'height': '100%'
       }, true);
@@ -534,12 +542,13 @@
       if (browser.isIE()) disabled['display'] = 'none';
       browser.createStyle(controls.cls.navcss + '.disabled', disabled, true);
 
-      for (var n in _.nav) {
-        var horizontal = (n === 'left' || n === 'right');
-        var pos = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
-        var dir = horizontal ? 'top' : 'left';
+      var n, horizontal, pos, dir, ctrl, after, border, borderpad;
+      for (n in _.nav) {
+        horizontal = (n === 'left' || n === 'right');
+        pos = (n === 'up') ? 'top' : (n === 'down') ? 'bottom' : n;
+        dir = horizontal ? 'top' : 'left';
 
-        var ctrl = {
+        ctrl = {
           'width': horizontal ? '22px': '16px',
           'height': horizontal ? '16px' : '22px',
           'tap-highlight-color': 'rgba(0, 0, 0, 0)',
@@ -551,7 +560,7 @@
         ctrl['margin-' + dir] = '-8px';
         browser.createStyle(controls.cls.navcss + '.' + n, ctrl, true);
 
-        var after = {
+        after = {
           'width': '0',
           'height': '0',
           'content': '""',
@@ -566,11 +575,15 @@
         after['margin-' + dir] = '-8px';
         browser.createStyle(controls.cls.id(_, true) + ' .' + controls.cls.nav + '.' + n + ':after', after, true);
 
-        var border = {};
+        border = {};
         border[horizontal ? 'height': 'width'] = '100%';
         border[dir] = '0';
         border['margin-' + dir] = '0';
         browser.createStyle(controls.cls.maincss + '.border .' + controls.cls.nav + '.' + n, border, true);
+
+        borderpad = {};
+        borderpad[pos] = css(_.slidr, 'padding-' + pos) + 'px';
+        browser.createStyle(controls.cls.id(_, true) + '.border .' + controls.cls.nav + '.' + n, borderpad, true);
       }
     },
 
@@ -610,8 +623,8 @@
     css: function(_) {
       browser.createStyle(breadcrumbs.cls.maincss, {
         'position': 'absolute',
-        'bottom': '0',
-        'right': '0',
+        'bottom': css(_.slidr, 'padding-bottom') + 'px',
+        'right': css(_.slidr, 'padding-right') + 'px',
         'padding': '10px',
         'box-sizing': 'border-box',
         'transform': 'translateZ(9999px)'
@@ -798,11 +811,11 @@
         parts.push(dir);
         var opacity = (!!_.settings['fade']) ? '0' : '1';
         if (opacity === '0') parts.push('fade');
-        var prop = (dir === 'up' || dir === 'down') ? 'height' : 'width';
-        var size = css(target, prop);
-        parts.push(prop[0], size);
+        var prop = (dir === 'up' || dir === 'down') ? 'h' : 'w';
+        var s = (prop === 'h') ? size.getHeight(target) : size.getWidth(target);
+        parts.push(prop, s);
         var keyframe = lookup(fx.animation, [trans, type, dir]);
-        if (keyframe) keyframe(parts.join('-'), size, opacity);
+        if (keyframe) keyframe(parts.join('-'), s, opacity);
       }
       return parts.join('-');
     },
@@ -854,52 +867,70 @@
 
     // Add Slidr's we want to monitor.
     autoResize: function(_) {
-      size.active[_.id] = { src: _, h: 0, w: 0, d: size.dynamic(_) };
+      size.active[_.id] = { src: _, w: 0, h: 0, d: size.dynamic(_) };
     },
 
-    // Check whether width, height, and borderbox should by dynamically updated.
+    // Check whether width and height should by dynamically updated.
     dynamic: function(_) {
       var clone = css(_.slidr.cloneNode(false), { 'position': 'absolute', 'opacity': '0', 'filter': 'alpha(opacity=0)' });
       var probe = css(createEl('div'), { 'width': '42px', 'height': '42px' });
       clone.appendChild(probe);
       _.slidr.parentNode.insertBefore(clone, _.slidr);
-      var borderbox = css(clone, 'box-sizing') === 'border-box';
-      var originalWidth = (borderbox ? size.widthPad(_.slidr) + size.widthBorder(_.slidr) : 0) + 42;
-      var originalHeight = (borderbox ? size.heightPad(_.slidr) + size.heightBorder(_.slidr) : 0) + 42;
+      var originalWidth = (borderbox(clone) ? size.extraWidth(_.slidr) : 0) + 42;
+      var originalHeight = (borderbox(clone) ? size.extraHeight(_.slidr) : 0) + 42;
       var cloneWidth = css(clone, 'width');
       var cloneHeight = css(clone, 'height');
       var minWidth = css(clone, 'min-width');
       var minHeight = css(clone, 'min-height');
       var dynamic = {
         width: cloneWidth === 'auto' || cloneWidth === originalWidth || minWidth !== 0 && minWidth != 'auto',
-        height: cloneHeight === 'auto' || cloneHeight === originalHeight || minHeight !== 0 && minHeight != 'auto',
-        borderbox: borderbox
+        height: cloneHeight === 'auto' || cloneHeight === originalHeight || minHeight !== 0 && minHeight != 'auto'
       };
       _.slidr.parentNode.removeChild(clone);
       return dynamic;
     },
 
-    // Grabs the Slidr width/height padding.
-    widthPad: function(el) { return css(el, 'padding-left') + css(el, 'padding-right'); },
-    heightPad: function(el) { return css(el, 'padding-top') + css(el, 'padding-bottom'); },
-
-    // Grabs the Slidr width/height margin.
+    // Grabs the element width/height margin.
     widthMargin: function(el) { return css(el, 'margin-left') + css(el, 'margin-right'); },
     heightMargin: function(el) { return css(el, 'margin-top') + css(el, 'margin-bottom'); },
 
-    // Grabs the Slidr width/height border.
+    // Grabs the element width/height padding.
+    widthPad: function(el) { return css(el, 'padding-left') + css(el, 'padding-right'); },
+    heightPad: function(el) { return css(el, 'padding-top') + css(el, 'padding-bottom'); },
+
+    // Grabs the element width/height border.
     widthBorder: function(el) { return css(el, 'border-left-width') + css(el, 'border-right-width'); },
     heightBorder: function(el) { return css(el, 'border-top-width') + css(el, 'border-bottom-width'); },
 
-    // Sets the width/height of our Slidr container.
-    setWidth: function(_, w, borderbox) {
-      if (w !== 'auto') w = w + (borderbox ? size.widthPad(_.slidr) : 0);
-      css(_.slidr, { width: w + 'px' });
+    // Grabs extra border-box padding.
+    extraWidth: function(el) { return size.widthPad(el) + size.widthBorder(el); },
+    extraHeight: function(el) { return size.heightPad(el) + size.heightBorder(el); },
+
+    // Gets the element width/height.
+    getWidth: function(el) {
+      var w = css(el, 'width');
+      if (browser.isIE() && w === 'auto' && el.offsetWidth) w = el.offsetWidth;
+      if (w !== 'auto') w += (size.widthMargin(el) + (borderbox(el) ? 0 : size.extraWidth(el)));
       return w;
     },
-    setHeight: function(_, h, borderbox) {
-      if (h !== 'auto') h = h + (borderbox ? size.heightPad(_.slidr) : 0);
-      css(_.slidr, { height: h + 'px' });
+    getHeight: function(el) {
+      var h = css(el, 'height');
+      if (browser.isIE() && h === 'auto' && el.offsetHeight) h = el.offsetHeight;
+      if (h !== 'auto') h += (size.heightMargin(el) + (borderbox(el) ? 0 : size.extraHeight(el)));
+      return h;
+    },
+
+    // Sets the width/height of our element.
+    setWidth: function(el, w) {
+      var prop = w;
+      if (w !== 'auto' && w !== '') prop = (w + (borderbox(el) ? size.extraWidth(el) : 0)) + 'px';
+      css(el, { width: prop });
+      return w;
+    },
+    setHeight: function(el, h) {
+      var prop = h;
+      if (h !== 'auto' && h !== '') prop = (h + (borderbox(el) ? size.extraHeight(el) : 0)) + 'px';
+      css(el, { height: prop });
       return h;
     }
   };
@@ -946,7 +977,7 @@
           else if (e.which === 39 && c['canSlide']('right')) { dir = 'right'; }
           else if (e.which === 38 && c['canSlide']('up')) { dir = 'up'; }
           else if (e.which === 37 && c['canSlide']('left')) { dir = 'left'; }
-          if (dir) c['slide'](dir) && stop(e);
+          if (dir) c['slide'](dir) && browser.stop(e);
         }
       });
     })(),
@@ -967,7 +998,7 @@
         delta.y = e.touches[0].pageY - start.y;
         delta.duration = +new Date - start.time;
         if (delta.duration > 100 && (Math.abs(delta.x) + Math.abs(delta.y))/delta.duration < 0.25) return;
-        stop(e);
+        browser.stop(e);
       });
       bind(_.slidr, 'touchend', function(e) {
         e = browser.sanitize(e);
@@ -980,7 +1011,7 @@
           var dirV = delta.y < 0 ? 'down' : 'up';
           var dir = (validH && validV ? (dx > dy ? dirH : dirV) : (validH ? dirH : (validV ? dirV : null)));
           if (dir) actions.slide(_, dir);
-          stop(e);
+          browser.stop(e);
         }
       });
     }
@@ -1235,28 +1266,22 @@
 
   // Global timer for dynamic sizing.
   var TIMER = setInterval((function watch() {
-    var _, cur;
-    for (var a in size.active) {
-      cur = size.active[a];
+    var _, cur, index, el, width, height;
+    for (index in size.active) {
+      cur = size.active[index];
       _ = cur.src;
       if (!browser.isIE() && !contains(document, _.slidr)) {
-        delete size.active[a];
+        delete size.active[index];
         delete INSTANCES[_.id];
       } else if (css(_.slidr, 'visibility') === 'hidden') {
-        size.active[a].h = size.setHeight(_, 0, cur.d.borderbox);
-        size.active[a].w = size.setWidth(_, 0, cur.d.borderbox);
+        size.active[index].w = size.setWidth(_.slidr, 0);
+        size.active[index].h = size.setHeight(_.slidr, 0);
       } else if (slides.get(_, _.current)) {
-        var el = slides.get(_, _.current).el;
-        var height = css(el, 'height');
-        var width = css(el, 'width');
-        if (browser.isIE()) {
-          if (height === 'auto' && el.offsetHeight) height = el.offsetHeight;
-          if (width === 'auto' && el.offsetWidth) width = el.offsetWidth;
-        }
-        if (height !== 'auto') height += size.heightMargin(el);
-        if (width !== 'auto') width += size.widthMargin(el);
-        if (cur.d.height && cur.h != height) size.active[a].h = size.setHeight(_, height, cur.d.borderbox);
-        if (cur.d.width && cur.w != width) size.active[a].w = size.setWidth(_, width, cur.d.borderbox);
+        el = slides.get(_, _.current).el;
+        width = size.getWidth(el);
+        height = size.getHeight(el);
+        if (cur.d.width && cur.w != width) size.active[index].w = size.setWidth(_.slidr, width);
+        if (cur.d.height && cur.h != height) size.active[index].h = size.setHeight(_.slidr, height);
       }
     }
     return watch;
