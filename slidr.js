@@ -118,6 +118,14 @@
     }
   }
 
+  function unbind(el, ev, callback) {
+    if (typeof(ev) === 'string') ev = [ev];
+    for (var i = 0, e; e = ev[i]; i++) {
+      e = (e === 'click' && 'ontouchstart' in window) ? 'touchend' : (el.detachEvent) ? 'on' + e : e;
+      (el.detachEvent) ? el.detachEvent(e, callback) : el.removeEventListener(e, callback);
+    }
+  }
+
   // Check whether element has border-box set.
   function borderbox(el) {
     return css(el, 'box-sizing') === 'border-box';
@@ -201,12 +209,16 @@
       browser.addCSSRule(name, browser.createRule(name, props), optSafe);
     },
 
+    // Get browser prefix.
+    prefix: function(prop) {
+      return (prop.split('-').length === 3) ? '-' + prop.split('-')[1] + '-' : '';
+    },
+
     // Creates a keyframe animation rule.
     createKeyframe: function(name, rules) {
       var animation = browser.fix('animation', true);
       if (animation && !browser.keyframes[name]) {
-        var prefix = (animation.split('-').length === 3) ? '-' + animation.split('-')[1] + '-' : '';
-        var rule = ['@' + prefix + 'keyframes ' + name + ' {'];
+        var rule = ['@' + browser.prefix(animation) + 'keyframes ' + name + ' {'];
         for (var r in rules) rule.push(browser.createRule(r + '%', rules[r]));
         rule.push('}');
         browser.addCSSRule(name, rule.join(' '));
@@ -328,12 +340,75 @@
     },
 
     // Applies a directional transition to an element entering/leaving the Slidr.
-    apply: function(_, el, type, dir, opt_trans) {
-      var trans = opt_trans || transition.get(_, el, type, dir);
-      if (trans) {
-        breadcrumbs.update(_, el, type);
-        fx.animate(_, el, trans, type, dir);
+    apply: function(_, el, type, dir, trans) {
+      breadcrumbs.update(_, el, type);
+      fx.animate(_, el, trans, type, dir);
+    }
+  };
+
+  var callback = {
+
+    // Cache before/after hashes to prevent duplicate calls.
+    cache: {},
+
+    // Generate a unique hash string per metadata.
+    hash: function(id, meta) {
+      return [id, meta['in']['slidr'], meta['in']['trans'], meta['in']['dir'], meta['out']['slidr'],
+        meta['out']['trans'], meta['out']['dir']].join('-');
+    },
+
+    // Generate callback metadata.
+    meta: function(current, el, outdir, indir, outtrans, intrans) {
+      return {
+        'out': { 'slidr': current, 'trans': outtrans, 'dir': slides.opposite(outdir) },
+        'in': { 'slidr': el, 'trans': intrans, 'dir': indir }
+      };
+    },
+
+    // Callback before a Slidr transition.
+    before: function(_, meta) {
+      var hash = callback.hash(_.id, meta);
+      if (!callback.cache[hash]) callback.cache[hash] = {};
+      if (!callback.cache[hash].before) {
+        callback.cache[hash].before = true;
+        var cb = _.settings['before'];
+        if (typeof cb === 'function') cb(meta);
       }
+    },
+
+    // Callback after a Slidr animation.
+    after: function(_, el, meta) {
+      var hash = callback.hash(_.id, meta);
+      if (!callback.cache[hash].after) {
+        callback.cache[hash].after = true;
+        var cb = _.settings['after'];
+        if (typeof cb === 'function') callback.bindonce(_.id, slides.get(_, el).el, cb, meta);
+      }
+    },
+
+    // Bind after callback once.
+    bindonce: function(id, el, cb, meta) {
+      if (browser.supports('animation') && meta['in']['trans'] !== 'none') {
+        var ev = ['animationend', 'webkitAnimationEnd', 'oanimationend', 'MSAnimationEnd'];
+        var newCallback = function(e) {
+          if (browser.keyframes[e.animationName]) {
+            cb(meta);
+            unbind(el, ev, newCallback);
+            callback.reset(id, meta);
+          }
+        };
+        bind(el, ev, newCallback);
+      } else {
+        cb(meta);
+        callback.reset(id, meta);
+      }
+    },
+
+    // Reset animation cache.
+    reset: function(id, meta) {
+      var hash = callback.hash(id, meta);
+      callback.cache[hash].before = false;
+      callback.cache[hash].after = false;
     }
   };
 
@@ -397,8 +472,13 @@
     // Go to a target slide.
     go: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
       if (_.current && el) {
-        transition.apply(_, el, 'in', indir, opt_intrans);
-        transition.apply(_, _.current, 'out', outdir, opt_outtrans);
+        var intrans = opt_intrans || transition.get(_, el, 'in', indir);
+        var outtrans = opt_outtrans || transition.get(_, _.current, 'out', outdir);
+        var meta = callback.meta(_.current, el, outdir, indir, outtrans, intrans);
+        callback.before(_, meta);
+        transition.apply(_, el, 'in', indir, intrans);
+        transition.apply(_, _.current, 'out', outdir, outtrans);
+        callback.after(_, el, meta);
         _.current = el;
         controls.update(_);
         return true;
@@ -1293,8 +1373,13 @@
   // Active Slidr instances.
   var INSTANCES = {};
 
+  // Callback no-op.
+  var NOOP = function() {};
+
   // Slidr default settings.
   var DEFAULTS = {
+    'after': NOOP,                // Callback function after a slide transition finishes.
+    'before': NOOP,               // Callback function before a slide transition begins.
     'breadcrumbs': false,         // Show or hide breadcrumbs on start(). `true` or `false`.
     'controls': 'border',         // Show or hide control arrows on start(). `border`, `corner` or `none`.
     'direction': 'horizontal',    // The default direction for new slides. `horizontal` or `h`, `vertical` or `v`.
