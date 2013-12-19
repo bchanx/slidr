@@ -58,6 +58,8 @@ slidr.create('slidr-id').start();
 
 ```javascript
 slidr.create('slidr-id', {
+  after: function(e) { console.log('in: ' + e.in.slidr); },
+  before: function(e) { console.log('out: ' + e.out.slidr); },
   breadcrumbs: true,
   controls: 'corner',
   direction: 'vertical',
@@ -76,6 +78,8 @@ Full details on available settings listed below:
 
 | Parameter     | Type      | Default    | Description                                                                   |
 | ------------- |:---------:|:----------:| -----------------------------------------------------------------------------:|
+| `after`       | _function_| no-op      | Callback function after a slide transition finishes.                          |
+| `before`      | _function_| no-op      | Callback function before a slide transition begins.                           |
 | `breadcrumbs` | _bool_    | false      | Show or hide breadcrumbs on start(). `true` or `false`.                       |
 | `controls`    | _string_  | border     | Show or hide control arrows on start(). `border`, `corner` or `none`.         |
 | `direction`   | _string_  | horizontal | The default direction for new slides. `horizontal` or `h`, `vertical` or `v`. |
@@ -86,6 +90,23 @@ Full details on available settings listed below:
 | `timing`      | _object_  | {}         | Custom animation timings to apply. `{'transition': 'timing'}`.                |
 | `touch`       | _bool_    | false      | Whether to enable touch navigation for mobile devices. `true` or `false`.     |
 | `transition`  | _string_  | linear     | The default transition to apply. `cube`, `linear`, `fade`, or `none`.         |
+
+The `before` and `after` callback functions return the following metadata:
+
+```javascript
+{
+  out: {
+    slidr: "data-slidr-id",
+    trans: "in-transition",
+    dir: "in-direction"
+  },
+  in: {
+    slidr: "data-slidr-id",
+    trans: "out-transition",
+    dir: "out-direction"
+  }
+}
+```
 
 ### Global API
 The global `slidr` namespace provides the following function calls:
