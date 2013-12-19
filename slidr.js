@@ -1,5 +1,5 @@
 /*!
- * slidr v0.3.0 - A Javascript library for adding slide effects.
+ * slidr v0.4.0 - A Javascript library for adding slide effects.
  * bchanx.com/slidr
  * MIT licensed
  *
@@ -1370,7 +1370,7 @@
   })(), 250);
 
   // Current version.
-  var VERSION = '0.3.0';
+  var VERSION = '0.4.0';
 
   // Active Slidr instances.
   var INSTANCES = {};
