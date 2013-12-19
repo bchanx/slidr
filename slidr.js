@@ -110,20 +110,20 @@
   }
 
   // Bind element event(s) to a callback.
-  function bind(el, ev, callback) {
+  function bind(el, ev, callback, optUnbind) {
     if (typeof(ev) === 'string') ev = [ev];
-    for (var i = 0, e; e = ev[i]; i++) {
-      e = (e === 'click' && 'ontouchstart' in window) ? 'touchend' : (el.attachEvent) ? 'on' + e : e;
-      (el.attachEvent) ? el.attachEvent(e, callback) : el.addEventListener(e, callback);
+    for (var i = 0, e, isAnimation; e = ev[i]; i++) {
+      isAnimation = indexOf(browser.animations, e) > 0;
+      e = (e === 'click' && 'ontouchstart' in window) ? 'touchend' : 
+        (el.attachEvent && !isAnimation) ? 'on' + e : e;
+      (el.attachEvent && !isAnimation) ? (optUnbind ? el.detachEvent(e, callback) : el.attachEvent(e, callback)) :
+        (optUnbind ? el.removeEventListener(e, callback) : el.addEventListener(e, callback));
     }
   }
 
+  // Unbind element event(s) to a callback.
   function unbind(el, ev, callback) {
-    if (typeof(ev) === 'string') ev = [ev];
-    for (var i = 0, e; e = ev[i]; i++) {
-      e = (e === 'click' && 'ontouchstart' in window) ? 'touchend' : (el.detachEvent) ? 'on' + e : e;
-      (el.detachEvent) ? el.detachEvent(e, callback) : el.removeEventListener(e, callback);
-    }
+    bind(el, ev, callback, true);
   }
 
   // Check whether element has border-box set.
@@ -312,7 +312,10 @@
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault) e.preventDefault();
       return false;
-    }
+    },
+
+    // Animationend events.
+    animations:  ['animationend', 'webkitAnimationEnd', 'oanimationend', 'MSAnimationEnd']
   };
 
   var transition = {
@@ -389,15 +392,14 @@
     // Bind after callback once.
     bindonce: function(id, el, cb, meta) {
       if (browser.supports('animation') && meta['in']['trans'] !== 'none') {
-        var ev = ['animationend', 'webkitAnimationEnd', 'oanimationend', 'MSAnimationEnd'];
         var newCallback = function(e) {
           if (browser.keyframes[e.animationName]) {
             cb(meta);
-            unbind(el, ev, newCallback);
+            unbind(el, browser.animations, newCallback);
             callback.reset(id, meta);
           }
         };
-        bind(el, ev, newCallback);
+        bind(el, browser.animations, newCallback);
       } else {
         cb(meta);
         callback.reset(id, meta);
