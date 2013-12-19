@@ -973,8 +973,8 @@
     },
 
     // Grabs the element width/height margin.
-    widthMargin: function(el) { return css(el, 'margin-left') + css(el, 'margin-right'); },
-    heightMargin: function(el) { return css(el, 'margin-top') + css(el, 'margin-bottom'); },
+    widthMargin: function(el) { return Math.max(0, css(el, 'margin-left')) + Math.max(0, css(el, 'margin-right')); },
+    heightMargin: function(el) { return Math.max(0, css(el, 'margin-top')) + Math.max(0, css(el, 'margin-bottom')); },
 
     // Grabs the element width/height padding.
     widthPad: function(el) { return css(el, 'padding-left') + css(el, 'padding-right'); },
