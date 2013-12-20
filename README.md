@@ -95,15 +95,18 @@ The `before` and `after` callback functions return the following metadata:
 
 ```javascript
 {
-  out: {
-    slidr: "data-slidr-id",
-    trans: "in-transition",
-    dir: "in-direction"
-  },
+  id: "slidr-id",
   in: {
-    slidr: "data-slidr-id",
-    trans: "out-transition",
-    dir: "out-direction"
+    el: #<HTMLElement>,
+    slidr: "data-slidr-in",
+    trans: "transition-in",
+    dir: "direction-in"
+  },
+  out: {
+    el: #<HTMLElement>,
+    slidr: "data-slidr-out",
+    trans: "transition-out",
+    dir: "direction-out"
   }
 }
 ```

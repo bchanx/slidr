@@ -355,22 +355,23 @@
     cache: {},
 
     // Generate a unique hash string per metadata.
-    hash: function(id, meta) {
-      return [id, meta['in']['slidr'], meta['in']['trans'], meta['in']['dir'], meta['out']['slidr'],
+    hash: function(meta) {
+      return [meta['id'], meta['in']['slidr'], meta['in']['trans'], meta['in']['dir'], meta['out']['slidr'],
         meta['out']['trans'], meta['out']['dir']].join('-');
     },
 
     // Generate callback metadata.
-    meta: function(current, el, outdir, indir, outtrans, intrans) {
+    meta: function(_, outs, ins, outdir, indir, outtrans, intrans) {
       return {
-        'out': { 'slidr': current, 'trans': outtrans, 'dir': slides.opposite(outdir) },
-        'in': { 'slidr': el, 'trans': intrans, 'dir': indir }
+        'id': _.id,
+        'in': { 'el': slides.get(_, ins).el, 'slidr': ins, 'trans': intrans, 'dir': indir },
+        'out': { 'el': slides.get(_, outs).el, 'slidr': outs, 'trans': outtrans, 'dir': slides.opposite(outdir) }
       };
     },
 
     // Callback before a Slidr transition.
     before: function(_, meta) {
-      var hash = callback.hash(_.id, meta);
+      var hash = callback.hash(meta);
       if (!callback.cache[hash]) callback.cache[hash] = {};
       if (!callback.cache[hash].before) {
         callback.cache[hash].before = true;
@@ -380,35 +381,35 @@
     },
 
     // Callback after a Slidr animation.
-    after: function(_, el, meta) {
-      var hash = callback.hash(_.id, meta);
+    after: function(_, meta) {
+      var hash = callback.hash(meta);
       if (!callback.cache[hash].after) {
         callback.cache[hash].after = true;
         var cb = _.settings['after'];
-        if (typeof cb === 'function') callback.bindonce(_.id, slides.get(_, el).el, cb, meta);
+        if (typeof cb === 'function') callback.bindonce(cb, meta);
       }
     },
 
     // Bind after callback once.
-    bindonce: function(id, el, cb, meta) {
+    bindonce: function(cb, meta) {
       if (browser.supports('animation') && meta['in']['trans'] !== 'none') {
         var newCallback = function(e) {
           if (browser.keyframes[e.animationName]) {
             cb(meta);
-            unbind(el, browser.animations, newCallback);
-            callback.reset(id, meta);
+            unbind(meta['in']['el'], browser.animations, newCallback);
+            callback.reset(meta);
           }
         };
-        bind(el, browser.animations, newCallback);
+        bind(meta['in']['el'], browser.animations, newCallback);
       } else {
         cb(meta);
-        callback.reset(id, meta);
+        callback.reset(meta);
       }
     },
 
     // Reset animation cache.
-    reset: function(id, meta) {
-      var hash = callback.hash(id, meta);
+    reset: function(meta) {
+      var hash = callback.hash(meta);
       callback.cache[hash].before = false;
       callback.cache[hash].after = false;
     }
@@ -476,11 +477,11 @@
       if (_.current && el) {
         var intrans = opt_intrans || transition.get(_, el, 'in', indir);
         var outtrans = opt_outtrans || transition.get(_, _.current, 'out', outdir);
-        var meta = callback.meta(_.current, el, outdir, indir, outtrans, intrans);
+        var meta = callback.meta(_, _.current, el, outdir, indir, outtrans, intrans);
         callback.before(_, meta);
         transition.apply(_, el, 'in', indir, intrans);
         transition.apply(_, _.current, 'out', outdir, outtrans);
-        callback.after(_, el, meta);
+        callback.after(_, meta);
         _.current = el;
         controls.update(_);
         return true;
