@@ -981,23 +981,23 @@
 
     // Grabs the element width/height margin.
     widthMargin: function(el) {
-      return size.sum(Math.max(0, css(el, 'margin-left')) + Math.max(0, css(el, 'margin-right')));
+      return size.sum(Math.max(0, css(el, 'margin-left')), Math.max(0, css(el, 'margin-right')));
     },
     heightMargin: function(el) {
-      return size.sum(Math.max(0, css(el, 'margin-top')) + Math.max(0, css(el, 'margin-bottom')));
+      return size.sum(Math.max(0, css(el, 'margin-top')), Math.max(0, css(el, 'margin-bottom')));
     },
 
     // Grabs the element width/height padding.
-    widthPad: function(el) { return size.sum(css(el, 'padding-left') + css(el, 'padding-right')); },
-    heightPad: function(el) { return size.sum(css(el, 'padding-top') + css(el, 'padding-bottom')); },
+    widthPad: function(el) { return size.sum(css(el, 'padding-left'), css(el, 'padding-right')); },
+    heightPad: function(el) { return size.sum(css(el, 'padding-top'), css(el, 'padding-bottom')); },
 
     // Grabs the element width/height border.
-    widthBorder: function(el) { return size.sum(css(el, 'border-left-width') + css(el, 'border-right-width')); },
-    heightBorder: function(el) { return size.sum(css(el, 'border-top-width') + css(el, 'border-bottom-width')); },
+    widthBorder: function(el) { return size.sum(css(el, 'border-left-width'), css(el, 'border-right-width')); },
+    heightBorder: function(el) { return size.sum(css(el, 'border-top-width'), css(el, 'border-bottom-width')); },
 
     // Grabs extra border-box padding.
-    extraWidth: function(el) { return size.sum(size.widthPad(el) + size.widthBorder(el)); },
-    extraHeight: function(el) { return size.sum(size.heightPad(el) + size.heightBorder(el)); },
+    extraWidth: function(el) { return size.sum(size.widthPad(el), size.widthBorder(el)); },
+    extraHeight: function(el) { return size.sum(size.heightPad(el), size.heightBorder(el)); },
 
     // Gets the element width/height.
     getWidth: function(el) {
