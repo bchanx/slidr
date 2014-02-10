@@ -1,9 +1,9 @@
 /*!
- * slidr v0.4.0 - A Javascript library for adding slide effects.
+ * slidr v0.5.0 - A Javascript library for adding slide effects.
  * bchanx.com/slidr
  * MIT licensed
  *
- * Copyright (c) 2013 Brian Chan (bchanx.com)
+ * Copyright (c) 2014 Brian Chan (bchanx.com)
  */
 (function(root, factory) {
   // CommonJS
@@ -973,32 +973,42 @@
       return dynamic;
     },
 
+    // Returns the sum of all integer arguments passed in, or 0. Best effort.
+    sum: function() {
+      for (var i = 0, s = 0, arg; arg = arguments[i]; i++) s += arg;
+      return isNaN(s) ? 0 : s;
+    },
+
     // Grabs the element width/height margin.
-    widthMargin: function(el) { return Math.max(0, css(el, 'margin-left')) + Math.max(0, css(el, 'margin-right')); },
-    heightMargin: function(el) { return Math.max(0, css(el, 'margin-top')) + Math.max(0, css(el, 'margin-bottom')); },
+    widthMargin: function(el) {
+      return size.sum(Math.max(0, css(el, 'margin-left')) + Math.max(0, css(el, 'margin-right')));
+    },
+    heightMargin: function(el) {
+      return size.sum(Math.max(0, css(el, 'margin-top')) + Math.max(0, css(el, 'margin-bottom')));
+    },
 
     // Grabs the element width/height padding.
-    widthPad: function(el) { return css(el, 'padding-left') + css(el, 'padding-right'); },
-    heightPad: function(el) { return css(el, 'padding-top') + css(el, 'padding-bottom'); },
+    widthPad: function(el) { return size.sum(css(el, 'padding-left') + css(el, 'padding-right')); },
+    heightPad: function(el) { return size.sum(css(el, 'padding-top') + css(el, 'padding-bottom')); },
 
     // Grabs the element width/height border.
-    widthBorder: function(el) { return css(el, 'border-left-width') + css(el, 'border-right-width'); },
-    heightBorder: function(el) { return css(el, 'border-top-width') + css(el, 'border-bottom-width'); },
+    widthBorder: function(el) { return size.sum(css(el, 'border-left-width') + css(el, 'border-right-width')); },
+    heightBorder: function(el) { return size.sum(css(el, 'border-top-width') + css(el, 'border-bottom-width')); },
 
     // Grabs extra border-box padding.
-    extraWidth: function(el) { return size.widthPad(el) + size.widthBorder(el); },
-    extraHeight: function(el) { return size.heightPad(el) + size.heightBorder(el); },
+    extraWidth: function(el) { return size.sum(size.widthPad(el) + size.widthBorder(el)); },
+    extraHeight: function(el) { return size.sum(size.heightPad(el) + size.heightBorder(el)); },
 
     // Gets the element width/height.
     getWidth: function(el) {
       var w = css(el, 'width');
-      if (browser.isIE() && w === 'auto' && el.offsetWidth) w = el.offsetWidth;
+      if (browser.isIE() && w === 'auto' && el.clientWidth) w = el.clientWidth;
       if (w !== 'auto') w += (size.widthMargin(el) + (borderbox(el) ? 0 : size.extraWidth(el)));
       return w;
     },
     getHeight: function(el) {
       var h = css(el, 'height');
-      if (browser.isIE() && h === 'auto' && el.offsetHeight) h = el.offsetHeight;
+      if (browser.isIE() && h === 'auto' && el.clientHeight) h = el.clientHeight;
       if (h !== 'auto') h += (size.heightMargin(el) + (borderbox(el) ? 0 : size.extraHeight(el)));
       return h;
     },
@@ -1160,7 +1170,9 @@
     auto: function(_, msec, direction) {
       if (_.started && slides.isdir(direction)) {
         actions.stop(_);
-        _.auto = setInterval(function() { slides.slide(_, direction); }, msec);
+        _.auto = setInterval(function() {
+          if (!(_.settings['pause'] && nav.mouse.isOver(_.id))) slides.slide(_, direction);
+        }, msec);
       }
     },
 
@@ -1371,7 +1383,7 @@
   })(), 250);
 
   // Current version.
-  var VERSION = '0.4.0';
+  var VERSION = '0.5.0';
 
   // Active Slidr instances.
   var INSTANCES = {};
@@ -1389,6 +1401,7 @@
     'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
     'keyboard': false,            // Whether to enable keyboard navigation upon mouseover. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
+    'pause': false,               // Whether to pause on mouseover for slidr's running in auto(). `true` or `false`
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
     'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
     'touch': false,               // Whether to enable touch navigation for mobile devices. `true` or `false`.
