@@ -1303,8 +1303,9 @@
 
       /**
        * Automatically advance to the next slide after a certain timeout. Calls start() if not already called.
-       * @param {int=} opt_msec The number of millis between each slide transition. Defaults to 5000 (5 seconds).
-       * @param {string=} opt_direction 'up', 'down', 'left', or 'right'. Defaults to 'right'.
+       * Reuses any previous parameters (msec and direction) if auto() is called to resume after stop().
+       * @param {int=} opt_msec The number of millis between each slide transition. Default is 5000 (5 seconds).
+       * @param {string=} opt_direction 'up', 'down', 'left', or 'right'. Default is 'right'.
        * @param {string=} opt_start The `data-slidr` id to start at (only works if auto is called to start the Slidr).
        * @return {this}
        */
