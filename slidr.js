@@ -1170,7 +1170,9 @@
     auto: function(_, msec, direction) {
       if (_.started && slides.isdir(direction)) {
         actions.stop(_);
-        _.auto = setInterval(function() {
+        _.auto.msec = msec;
+        _.auto.direction = direction;
+        _.auto.id = setInterval(function() {
           if (!(_.settings['pause'] && nav.mouse.isOver(_.id))) slides.slide(_, direction);
         }, msec);
       }
@@ -1178,9 +1180,9 @@
 
     // Stops auto transitioning.
     stop: function(_) {
-      if (_.started && _.auto) {
-        clearInterval(_.auto);
-        _.auto = null;
+      if (_.started && _.auto.id) {
+        clearInterval(_.auto.id);
+        _.auto.id = null;
       }
     },
 
@@ -1238,8 +1240,8 @@
       // The current slide.
       current: null,
 
-      // Whether auto() is currently active. Stores the timer interval id.
-      auto: null,
+      // The auto() metadata.
+      auto: { id: null, msec: 5000, direction: 'right' },
 
       // A {mapping} of slides to their neighbors.
       slides: {},
@@ -1308,7 +1310,7 @@
        */
       'auto': function(opt_msec, opt_direction, opt_start) {
         actions.start(_, opt_start);
-        actions.auto(_, opt_msec || 5000, opt_direction || 'right');
+        actions.auto(_, opt_msec || _.auto.msec, opt_direction || _.auto.direction);
         return this;
       },
 
@@ -1401,7 +1403,7 @@
     'fade': true,                 // Whether slide transitions should fade in/out. `true` or `false`.
     'keyboard': false,            // Whether to enable keyboard navigation upon mouseover. `true` or `false`.
     'overflow': false,            // Whether to overflow transitions at slidr borders. `true` or `false`.
-    'pause': false,               // Whether to pause on mouseover for slidr's running in auto(). `true` or `false`
+    'pause': false,               // Whether to pause on mouseover when running in auto(). `true` or `false`.
     'theme': '#fff',              // Sets color theme for breadcrumbs/controls. #hexcode or rgba(value).
     'timing': {},                 // Custom animation timings to apply. {'transition': 'timing'}.
     'touch': false,               // Whether to enable touch navigation for mobile devices. `true` or `false`.

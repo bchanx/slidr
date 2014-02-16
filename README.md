@@ -86,6 +86,7 @@ Full details on available settings listed below:
 | `fade`        | _bool_    | true       | Whether slide transitions should fade in/out. `true` or `false`.              |
 | `keyboard`    | _bool_    | false      | Whether to enable keyboard navigation upon mouseover. `true` or `false`.      |
 | `overflow`    | _bool_    | false      | Whether to overflow transitions at slidr borders. `true` or `false`.          |
+| `pause`       | _bool_    | false      | Whether to pause on mouseover when running in auto(). `true` or `false`.      |
 | `theme`       | _string_  | #fff       | Sets color theme for breadcrumbs/controls. `#hexcode` or `rgba(value)`.       |
 | `timing`      | _object_  | {}         | Custom animation timings to apply. `{'transition': 'timing'}`.                |
 | `touch`       | _bool_    | false      | Whether to enable touch navigation for mobile devices. `true` or `false`.     |
