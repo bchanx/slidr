@@ -447,6 +447,7 @@
         fx.init(_, _.current, 'fade');
         fx.animate(_, _.current, 'fade', 'in');
         _.displayed = true;
+        classname(_.slides[_.current].el, 'add', 'active'); // add active class
         actions.controls(_, _.settings['controls']);
         if (!!_.settings['breadcrumbs']) actions.breadcrumbs(_);
       }
@@ -474,13 +475,15 @@
 
     // Go to a target slide.
     go: function(_, el, outdir, indir, opt_outtrans, opt_intrans) {
-      if (_.current && el) {
+      if (_.current && el) { 
         var intrans = opt_intrans || transition.get(_, el, 'in', indir);
         var outtrans = opt_outtrans || transition.get(_, _.current, 'out', outdir);
         var meta = callback.meta(_, _.current, el, outdir, indir, outtrans, intrans);
         callback.before(_, meta);
+        classname(_.slides[_.current].el, 'rm', 'active'); // remove active class
         transition.apply(_, el, 'in', indir, intrans);
         transition.apply(_, _.current, 'out', outdir, outtrans);
+        classname(_.slides[el].el, 'add', 'active'); // add active class
         callback.after(_, meta);
         _.current = el;
         controls.update(_);
