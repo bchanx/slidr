@@ -571,7 +571,7 @@
 
     // Create controls container.
     create: function(_) {
-      if (_.slidr && !_.controls && _.settings.controls != 'none') {
+      if (_.slidr && !_.controls) {
         _.controls = css(classname(createEl('aside', { 'id': controls.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
           'filter': 'alpha(opacity=0)',
@@ -680,8 +680,7 @@
 
     // Update controls.
     update: function(_) {
-      if(_.settings.controls != 'none')
-        for (var n in _.nav) classname(_.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
+      for (var n in _.nav) classname(_.nav[n], actions.canSlide(_, n) ? 'rm' : 'add', 'disabled');
     }
   };
 
@@ -692,7 +691,7 @@
 
     // Initialize breadcrumbs container.
     init: function(_) {
-      if (_.slidr && !_.breadcrumbs && _.settings.breadcrumbs) {
+      if (_.slidr && !_.breadcrumbs) {
         _.breadcrumbs = css(classname(createEl('aside', { 'id': breadcrumbs.cls.id(_) }), 'add', 'disabled'), {
           'opacity': '0',
           'filter': 'alpha(opacity=0)',
@@ -781,14 +780,13 @@
 
     // Update breadcrumbs.
     update: function(_, el, type) {
-      if(_.settings.breadcrumbs)
-        classname(_.crumbs[el].el, type === 'in' ? 'add' : 'rm', 'active');
+      classname(_.crumbs[el].el, type === 'in' ? 'add' : 'rm', 'active');
     },
 
     // Create breadcrumbs.
     create: function(_) {
       breadcrumbs.init(_);
-      if (_.breadcrumbs && _.settings.breadcrumbs) {
+      if (_.breadcrumbs) {
         var crumbs = {};
         var bounds = { x: { min: 0, max: 0 }, y: { min: 0, max: 0 } };
         breadcrumbs.find(_, crumbs, bounds, _.start, 0, 0);
