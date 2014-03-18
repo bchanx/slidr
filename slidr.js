@@ -450,6 +450,7 @@
         classname(_.slides[_.current].el, 'add', 'active'); // add active class
         actions.controls(_, _.settings['controls']);
         if (!!_.settings['breadcrumbs']) actions.breadcrumbs(_);
+        if (typeof _.created === 'function') _.created(_); // created callback function
       }
     },
 
@@ -1213,7 +1214,7 @@
   };
 
   // The Slidr constructor.
-  var Slidr = function(id, el, settings) {
+  var Slidr = function(id, el, settings, created) {
 
     var _ = {
       // Slidr id.
@@ -1256,7 +1257,10 @@
       crumbs: {},
 
       // Reference to the Slidr controller navigators.
-      nav: { 'up': null, 'down': null, 'left': null, 'right': null }
+      nav: { 'up': null, 'down': null, 'left': null, 'right': null },
+
+      // callback after Slidr instance has been created
+      created: created
     };
 
     var api = {
@@ -1445,8 +1449,9 @@
      * Calling create on the same element twice returns the already instantiated Slidr.
      * @param {string} id The element id to turn into a Slidr.
      * @param {Object=} opt_settings Settings to apply.
+     * @param {Object=} created Callback function after slidr has been created.
      */
-    'create': function(id, opt_settings) {
+    'create': function(id, opt_settings, created) {
       var el = document.getElementById(id);
       if (!el) {
         console.warn('[Slidr] Could not find element with id [' + id + '].');
@@ -1454,7 +1459,7 @@
       }
       var settings = extend(DEFAULTS, opt_settings || {});
       settings['timing'] = extend(TIMING, settings['timing']);
-      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, settings);
+      INSTANCES[id] = INSTANCES[id] || new Slidr(id, el, settings, created);
       return INSTANCES[id];
     }
   };
