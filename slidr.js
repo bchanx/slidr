@@ -230,9 +230,9 @@
     fix: function(prop, forCSS) {
       if (!(prop in browser.cache)) {
         var parts = prop.split('-');
-        for (var i = 0, p; p = parts[i]; i++) parts[i] = p[0].toUpperCase() + p.toLowerCase().slice(1);
+        for (var i = 0, p; p = parts[i]; i++) parts[i] = p.charAt(0).toUpperCase() + p.toLowerCase().slice(1);
         var domprop = parts.join('');
-        domprop = domprop[0].toLowerCase() + domprop.slice(1);
+        domprop = domprop.charAt(0).toLowerCase() + domprop.slice(1);
         if (browser.styleEl[domprop] !== undefined) {
           browser.cache[prop] = { css: prop, dom: domprop };
         } else {
