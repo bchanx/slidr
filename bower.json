@@ -1,7 +1,6 @@
 {
   "name": "slidr",
   "main": "slidr.js",
-  "version": "0.5.0",
   "homepage": "https://github.com/bchanx/slidr",
   "authors": [
     "bchanx <bchanx@gmail.com>"
