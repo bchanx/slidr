@@ -37,7 +37,7 @@ Valid slides include any first-level children elements with the `data-slidr` att
   <img data-slidr="three" src="/static/images/coconut.png"/>
 </div>
 
-<div id="slidr-div" style="dislay: block">
+<div id="slidr-div" style="display: block">
   <div data-slidr="one">apple</div>
   <div data-slidr="two">banana</div>
   <div data-slidr="three">coconut</div>
