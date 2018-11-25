@@ -1,0 +1,8 @@
+{
+  "name": "slidr",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/bchanx/slidr",
+  "author": "Amila Welihinda <amilajack@gmail.com>",
+  "license": "MIT"
+}
