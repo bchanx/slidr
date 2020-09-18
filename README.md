@@ -313,7 +313,7 @@ aside[id="{slidr-id}-control"] .slidr-control.right:hover {
 }
 ```
 
-Note: controller arrows make use of the `:after` psuedo element.
+Note: controller arrows make use of the `:after` pseudo element.
 To hide the default triangular arrow, use the following CSS:
 
 ```css
